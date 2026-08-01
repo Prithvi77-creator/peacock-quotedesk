@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peacock Jetlines — Charter Quotation System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="css/styles.css?v=9">
+</head>
+<body>
+
+<div class="topbar">
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="Peacock Jetlines">
+  <div>
+    <div class="tb-title">Charter Quotation System</div>
+    <div class="tb-sub">Peacock Jetlines &middot; Shivalingam Global Aviation Pvt Ltd</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-ghost" onclick="newQuotation()">+ New quotation</button>
+  <button class="btn btn-red" id="dlbtn" onclick="downloadPDF()">&#11015;&nbsp; Download PDF</button>
+</div>
+
+<!-- ================= EDITOR ================= -->
+<div id="view-editor">
+<div class="layout">
+  <!-- ============ FORM ============ -->
+  <div class="panel">
+    <h2>Quotation type <span class="rule"></span></h2>
+    <div class="seg" id="tpl_seg">
+      <button data-tpl="private" onclick="switchTemplate('private')">Private charter</button>
+      <button data-tpl="medical" onclick="switchTemplate('medical')">Medical</button>
+      <button data-tpl="estimated" onclick="switchTemplate('estimated')">Estimated</button>
+    </div>
+    <label class="check"><input type="checkbox" id="f_multi" onchange="onMultiToggle()"> Multiple aircraft options (comparison quote)</label>
+
+    <h2>Quotation details <span class="rule"></span></h2>
+    <div class="grid2">
+      <div class="field"><label>Quotation No.</label><input id="f_qno" oninput="M().qno=this.value;upd()"></div>
+      <div class="field"><label>Date</label><input id="f_date" type="date" oninput="M().date=this.value;upd()"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Aircraft</label><input id="f_aircraft" list="aclist" placeholder="e.g. Legacy 600" oninput="M().aircraft=this.value;upd()">
+        <datalist id="aclist"></datalist>
+      </div>
+      <div class="field"><label>Currency</label>
+        <select id="f_cur" onchange="curChanged()"><option value="INR">INR (₹)</option><option value="USD">USD ($)</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Prepared for (optional)</label><input id="f_client" placeholder="Client / company name" oninput="M().client=this.value;upd()"></div>
+    <div id="med_fields" hidden>
+      <div class="grid2">
+        <div class="field"><label>Configuration</label><input id="f_configuration" placeholder="e.g. ICU stretcher + 2 attendants" oninput="M().configuration=this.value;upd()"></div>
+        <div class="field"><label>Positioning</label><input id="f_positioning" placeholder="e.g. Base — Kolkata" oninput="M().positioning=this.value;upd()"></div>
+      </div>
+    </div>
+    <div class="field" id="ac_photo_field">
+      <label>Aircraft photo (optional)</label>
+      <div class="photo-drop" id="ac_photo_drop"></div>
+    </div>
+
+    <div id="opt_section" hidden>
+      <h2>Aircraft options <span class="rule"></span></h2>
+      <div id="options"></div>
+      <button class="addbtn" onclick="addOption()">+ Add aircraft option</button>
+      <p class="hint">Each option shows its photo, key details and price. Cost lines below are common charges added to every option.</p>
+    </div>
+
+    <h2>Flight details <span class="rule"></span></h2>
+    <div id="legs"></div>
+    <button class="addbtn" onclick="addLeg()">+ Add flight leg</button>
+
+    <h2 id="cost_h2">Costing <span class="rule"></span></h2>
+    <div id="costs"></div>
+    <button class="addbtn" onclick="addCost()">+ Add cost line</button>
+    <div class="grid2" style="margin-top:10px">
+      <div class="field"><label>GST %</label><input id="f_gst" type="number" min="0" max="28" step="0.1" oninput="M().gstRate=this.value;upd()"></div>
+      <div class="field"><label>&nbsp;</label>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="f_tnc" onchange="M().includeTnc=this.checked;upd()"> Include T&amp;C pages</label>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="f_map" onchange="M().includeMap=this.checked;upd()"> Include route map page</label>
+    <label class="check"><input type="checkbox" id="f_notes" onchange="onNotesToggle()"> Include additional notes / information page</label>
+    <div id="notes_field" hidden>
+      <div class="field"><label>Additional notes / information</label>
+        <textarea id="f_addl_notes" rows="5" placeholder="Special conditions, inclusions or exclusions, payment or contact instructions — anything extra to print after the terms." oninput="Q.additionalNotes=this.value;upd()"></textarea></div>
+    </div>
+    <div class="totals-box"><div id="t_rows"></div></div>
+
+    <h2>Company &amp; branding <span class="rule"></span></h2>
+    <details class="settings">
+      <summary>Company details printed on documents</summary>
+      <div class="inner">
+        <div class="field"><label>Company name</label><input id="s_coName"></div>
+        <div class="field"><label>Address line</label><input id="s_coLine"></div>
+        <div class="field"><label>Phone numbers</label><input id="s_coPhones"></div>
+        <div class="grid2">
+          <div class="field"><label>Email</label><input id="s_coEmail"></div>
+          <div class="field"><label>Website</label><input id="s_coWeb"></div>
+        </div>
+        <div class="field"><label>Signature line (for)</label><input id="s_signFor"></div>
+        <button class="btn btn-outline btn-mini" onclick="applyOrgToQuote()">Apply to this quotation</button>
+        <p class="hint">Applies to new quotations you start in this session. You can also click any text on the document itself to edit it in place.</p>
+      </div>
+    </details>
+    <p class="hint">Everything updates the document on the right instantly — and you can click any text on the pages to edit it directly. Click <b>Download PDF</b> for the client-ready file.</p>
+  </div>
+  <div class="resizer" id="resizer" title="Drag to resize the editor (double-click to reset)"></div>
+  <div class="actions-sticky">
+    <button class="btn btn-red" onclick="downloadPDF()">Download PDF</button>
+  </div>
+
+  <!-- ============ PREVIEW ============ -->
+  <div class="preview-area editable-on">
+    <div class="preview-toolbar">
+      <span class="pv-label">Live preview</span>
+      <span class="edithint">— click any text on the pages to edit it</span>
+    </div>
+    <div class="pages-wrap" id="pages">
+
+      <!-- PAGE 1 -->
+      <div class="page q-page" id="page1">
+        <div class="overflow-flag">Content exceeds A4 — reduce rows</div>
+        <div class="q-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="logo js-logo" alt="">
+          <div class="co-name" id="pv_co_name"></div>
+          <div class="co-line" id="pv_co_line"></div>
+          <div class="co-contact" id="pv_co_contact"></div>
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="emblem js-emblem" alt="">
+          <div class="redtick"></div>
+        </div>
+        <div class="q-body">
+          <div class="greet" id="pv_greet"></div>
+          <div id="pv_posbar_wrap" hidden>
+            <div class="secbar" style="margin:0 0 12px"><span class="sb-ic">&#43;</span><span class="sb-t" id="pv_posbar"></span></div>
+          </div>
+          <div class="meta-row">
+            <div class="meta-grid" id="pv_meta"></div>
+            <div class="ac-photo-wrap" id="pv_ac_photo_wrap" hidden><img class="ac-photo" id="pv_ac_photo" alt=""></div>
+          </div>
+          <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_flights_title"></span></div>
+          <table class="flights">
+            <thead><tr>
+              <th id="pv_th_date"></th><th id="pv_th_from"></th><th id="pv_th_to"></th>
+              <th id="pv_th_etd"></th><th id="pv_th_time"></th><th id="pv_th_remarks"></th>
+            </tr></thead>
+            <tbody id="pv_legs"></tbody>
+          </table>
+          <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_cost_title"></span><span class="sb-tag" id="pv_curtag">INR</span></div>
+          <div class="costlist" id="pv_costs"></div>
+          <div id="pv_optwrap"></div>
+          <div class="inwords" id="pv_words"></div>
+        </div>
+        <div class="q-footer">
+          <div class="pn-title" id="pv_notes_title"></div>
+          <div id="pv_notes"></div>
+        </div>
+      </div>
+
+      <!-- ROUTE MAP PAGE -->
+      <div class="page" id="page_map" hidden>
+        <div class="overflow-flag">Content exceeds A4</div>
+        <div class="t-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
+          <div class="t-title" id="pv_map_title"></div>
+        </div>
+        <div class="map-body">
+          <div class="map-intro" id="pv_map_intro"></div>
+          <div class="map-card"><div class="map-frame" id="pv_map_frame"></div></div>
+          <div class="map-legend">
+            <span class="lg"><span class="dot"></span> Departure / arrival city</span>
+            <span class="lg"><span class="arcln"></span> Flight sector (arrow shows direction)</span>
+          </div>
+          <div class="route-summary" id="pv_route_summary"></div>
+        </div>
+        <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
+      </div>
+
+      <!-- T&C PAGE 1 -->
+      <div class="page tncpage" id="page2">
+        <div class="overflow-flag">Content exceeds A4 — shorten terms</div>
+        <div class="t-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
+          <div class="t-title" id="pv_tnc_title1"></div>
+        </div>
+        <div class="t-body" id="pv_tnc_body1"></div>
+        <div class="t-footer"><div class="redrule"></div><div class="site" id="pv_site1"></div></div>
+      </div>
+
+      <!-- T&C PAGE 2 -->
+      <div class="page tncpage" id="page3">
+        <div class="overflow-flag">Content exceeds A4 — shorten terms</div>
+        <div class="t-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
+          <div class="t-title" id="pv_tnc_title2"></div>
+        </div>
+        <div class="t-body">
+          <div id="pv_tnc_body2"></div>
+          <div class="sig-block">
+            <div class="for" id="pv_sign_for"></div>
+            <div class="sigline" id="pv_sign_role"></div>
+          </div>
+        </div>
+        <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
+      </div>
+
+      <!-- ADDITIONAL NOTES PAGE (optional) -->
+      <div class="page" id="page_notes" hidden>
+        <div class="overflow-flag">Content exceeds A4 — shorten the notes</div>
+        <div class="t-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
+          <div class="t-title" id="pv_notes_page_title"></div>
+        </div>
+        <div class="t-body">
+          <div class="addl-notes" id="pv_addl_notes"></div>
+        </div>
+        <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ?v=N cache-busts local assets: bump the number after editing any css/js
+     so browsers (and the client) fetch the new file instead of a cached copy. -->
+<script src="js/assets.js?v=9"></script>
+<script src="js/templates.js?v=9"></script>
+<script src="js/calc.js?v=9"></script>
+<script src="js/geo.js?v=9"></script>
+<script src="js/map.js?v=9"></script>
+<script src="js/store.js?v=9"></script>
+<script src="js/render.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
+</body>
+</html>

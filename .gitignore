@@ -1,0 +1,4 @@
+# local tooling / OS cruft — not part of the app
+.impeccable/
+.DS_Store
+*.log
