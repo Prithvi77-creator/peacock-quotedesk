@@ -37,7 +37,7 @@ const TEMPLATES = {
     label: 'Private charter',
     costTitle: 'Costing Details',
     gstDefault: 18,
-    greeting: 'Dear Sir/Madam,<br>We are pleased to offer you the <b data-slot="aircraft"></b> aircraft. The commercials for the same are as follows:',
+    greeting: 'Dear Sir/Madam,<br>We are pleased to offer you <span data-slot="aircraft"></span>. The commercials for the same are as follows:',
     metaExtra: [],                       // no extra meta rows
     posBar: null,                        // no positioning section bar
     costs: [
@@ -57,7 +57,7 @@ const TEMPLATES = {
     label: 'Medical evacuation',
     costTitle: 'Costing Details',
     gstDefault: 0,                       // GST is exempted in medical flights
-    greeting: 'Dear Sir/Madam,<br>We are pleased to offer you the medically equipped <b data-slot="aircraft"></b>. The commercials for the same are as follows:',
+    greeting: 'Dear Sir/Madam,<br>We are pleased to offer you <span data-slot="aircraft"></span>. The commercials for the same are as follows:',
     metaExtra: [
       { key: 'configuration', label: 'Configuration:' },
       { key: 'positioning',  label: 'Positioning:' }
@@ -88,7 +88,7 @@ const TEMPLATES = {
     label: 'Estimated cost',
     costTitle: 'Estimated Cost',
     gstDefault: 18,
-    greeting: 'Dear Sir/Madam,<br>We are pleased to offer you the <b data-slot="aircraft"></b> aircraft. The estimated commercials for the same are as follows:',
+    greeting: 'Dear Sir/Madam,<br>We are pleased to offer you <span data-slot="aircraft"></span>. The estimated commercials for the same are as follows:',
     metaExtra: [],
     posBar: null,
     costs: [

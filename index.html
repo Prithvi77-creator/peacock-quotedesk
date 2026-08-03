@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=13">
+<link rel="stylesheet" href="css/styles.css?v=23">
 </head>
 <body>
 
@@ -61,8 +61,8 @@
       <div class="field"><label>Quotation No.</label><input id="f_qno" oninput="M().qno=this.value;upd()"></div>
       <div class="field"><label>Date</label><input id="f_date" type="date" oninput="M().date=this.value;upd()"></div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>Aircraft</label><input id="f_aircraft" list="aclist" placeholder="e.g. Legacy 600" oninput="M().aircraft=this.value;upd()">
+    <div class="grid2" id="ac_cur_row">
+      <div class="field" id="ac_name_field"><label>Aircraft</label><input id="f_aircraft" list="aclist" placeholder="e.g. Legacy 600" oninput="M().aircraft=this.value;upd()" onchange="onAircraftChange()">
         <datalist id="aclist"></datalist>
       </div>
       <div class="field"><label>Currency</label>
@@ -90,7 +90,7 @@
       <h2>Aircraft options <span class="rule"></span></h2>
       <div id="options"></div>
       <button class="addbtn" onclick="addOption()">+ Add aircraft option</button>
-      <p class="hint">Each option shows its photo, key details and price. Cost lines below are common charges added to every option.</p>
+      <p class="hint">Each option shows its photos, key details and price. Cost lines below are common charges added to every option.</p>
     </div>
 
     <h2>Flight details <span class="rule"></span></h2>
@@ -109,6 +109,7 @@
     <p class="hint">Added after GST and never taxed — e.g. reimbursements or statutory fees, whether GST is on or off.</p>
 
     <h2>Document pages <span class="rule"></span></h2>
+    <label class="check"><input type="checkbox" id="f_aircraftpage" onchange="M().includeAircraftPage=this.checked;upd()"> Include aircraft page (photos &amp; specs)</label>
     <label class="check"><input type="checkbox" id="f_tnc" onchange="M().includeTnc=this.checked;upd()"> Include T&amp;C pages</label>
     <label class="check"><input type="checkbox" id="f_map" onchange="M().includeMap=this.checked;upd()"> Include route map page</label>
     <label class="check"><input type="checkbox" id="f_notes" onchange="onNotesToggle()"> Include additional notes / information page</label>
@@ -193,9 +194,7 @@
           <div class="t-title">Aircraft</div>
         </div>
         <div class="t-body">
-          <div class="gallery-name" id="pv_gallery_name"></div>
-          <div class="gallery-grid" id="pv_gallery_grid"></div>
-          <div class="gallery-details" id="pv_gallery_details"></div>
+          <div id="pv_gallery"></div>
         </div>
         <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
       </div>
@@ -269,15 +268,16 @@
 
 <!-- ?v=N cache-busts local assets: bump the number after editing any css/js
      so browsers (and the client) fetch the new file instead of a cached copy. -->
-<script src="js/assets.js?v=13"></script>
-<script src="js/templates.js?v=13"></script>
-<script src="js/calc.js?v=13"></script>
-<script src="js/geo.js?v=13"></script>
-<script src="js/india-admin.js?v=13"></script>
-<script src="js/cities.js?v=13"></script>
-<script src="js/map.js?v=13"></script>
-<script src="js/store.js?v=13"></script>
-<script src="js/render.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
+<script src="js/assets.js?v=23"></script>
+<script src="js/templates.js?v=23"></script>
+<script src="js/fleet.js?v=23"></script>
+<script src="js/calc.js?v=23"></script>
+<script src="js/geo.js?v=23"></script>
+<script src="js/india-admin.js?v=23"></script>
+<script src="js/cities.js?v=23"></script>
+<script src="js/map.js?v=23"></script>
+<script src="js/store.js?v=23"></script>
+<script src="js/render.js?v=23"></script>
+<script src="js/app.js?v=23"></script>
 </body>
 </html>

@@ -18,7 +18,7 @@ function newQuote(template){
     meta: {
       template, qno: nextQno(), date: todayISO(), aircraft: '', client: '',
       currency: 'INR', gstRate: tpl.gstDefault, gstEnabled: tpl.gstDefault > 0, multiAircraft: false,
-      includeTnc: true, includeMap: false, includeNotes: false,
+      includeTnc: true, includeMap: false, includeNotes: false, includeAircraftPage: true,
       configuration: '', positioning: ''
     },
     legs: [{ date: '', from: '', to: '', etd: 'TBA', time: '', remarks: '' }],
@@ -83,6 +83,7 @@ function switchTemplate(template){
 /* Push all Q state into form + preview (full rebuild). */
 function loadQuoteIntoUI(){
   const $ = id => document.getElementById(id);
+  _lastFleetKey = null;                 // let the next aircraft pick auto-fill
   document.querySelectorAll('#tpl_seg button').forEach(b =>
     b.classList.toggle('active', b.dataset.tpl === Q.meta.template));
   $('f_qno').value = Q.meta.qno;
@@ -94,6 +95,7 @@ function loadQuoteIntoUI(){
   $('f_tnc').checked = Q.meta.includeTnc;
   $('f_map').checked = Q.meta.includeMap;
   $('f_notes').checked = Q.meta.includeNotes;
+  $('f_aircraftpage').checked = Q.meta.includeAircraftPage !== false;
   $('f_multi').checked = Q.meta.multiAircraft;
   $('f_configuration').value = Q.meta.configuration || '';
   $('f_positioning').value = Q.meta.positioning || '';
@@ -103,6 +105,7 @@ function loadQuoteIntoUI(){
   $('notes_field').hidden = !Q.meta.includeNotes;
   $('opt_section').hidden = !Q.meta.multiAircraft;
   $('ac_photo_field').hidden = Q.meta.multiAircraft;
+  syncAircraftField();
   $('cost_h2').firstChild.textContent = Q.meta.multiAircraft ? 'Common charges (all options) ' : 'Costing ';
   syncGstUI();
   renderFormLegs(); renderFormCosts(); renderFormPostCosts(); renderFormOptions(); updateAircraftPhotoUI();
@@ -140,10 +143,41 @@ function onMultiToggle(){
   if (Q.meta.multiAircraft && !Q.options.length) Q.options.push(blankOption());
   document.getElementById('opt_section').hidden = !Q.meta.multiAircraft;
   document.getElementById('ac_photo_field').hidden = Q.meta.multiAircraft;
+  syncAircraftField();
   document.getElementById('cost_h2').firstChild.textContent =
     Q.meta.multiAircraft ? 'Common charges (all options) ' : 'Costing ';
   renderFormOptions();
   upd();
+}
+// The single top-level Aircraft field is redundant in comparison mode (each option
+// names its own aircraft), so hide it and let Currency take the full row.
+function syncAircraftField(){
+  document.getElementById('ac_name_field').hidden = Q.meta.multiAircraft;
+  document.getElementById('ac_cur_row').classList.toggle('solo', Q.meta.multiAircraft);
+}
+
+/* ===== Fleet Master: pick an aircraft → auto-fill its details + photos ===== */
+let _lastFleetKey = null;
+function onAircraftChange(){
+  if (Q.meta.multiAircraft) return;                 // single-aircraft only
+  const entry = fleetLookup(Q.meta.aircraft);
+  const key = entry ? fleetKey(Q.meta.aircraft) : null;
+  if (!entry || key === _lastFleetKey) return;      // only when it changes to a known aircraft
+  _lastFleetKey = key;
+  // details — fill from the fleet spec
+  Q.aircraftDetails = entry.specs;
+  document.getElementById('f_ac_details').value = entry.specs;
+  // photos — load the fleet images that actually exist (graceful if files not added yet)
+  Q.aircraftPhotos = [];
+  (entry.photos || []).forEach(src => {
+    const img = new Image();
+    img.onload = () => { Q.aircraftPhotos.push(src); updateAircraftPhotoUI(); upd(); };
+    img.onerror = () => {};                          // file not present — skip silently
+    img.src = src;
+  });
+  updateAircraftPhotoUI();
+  upd();
+  toast('Loaded details for ' + (Q.meta.aircraft || 'aircraft') + '. Edit anything as needed.');
 }
 
 /* single-aircraft photos (multiple) — shown on a dedicated gallery page */
@@ -205,7 +239,7 @@ function renderFormPostCosts(){
     <button class="del" onclick="delPostCost(${i})">✕</button>
   </div>`).join('');
 }
-function blankOption(){ return { name: '', year: '', seats: '', specs: '', price: '', remarks: '', photo: '' }; }
+function blankOption(){ return { name: '', year: '', seats: '', specs: '', price: '', remarks: '', photos: [] }; }
 function renderFormOptions(){
   document.getElementById('options').innerHTML = Q.options.map((o, i) => `
   <div class="opt-card">
@@ -221,23 +255,27 @@ function renderFormOptions(){
     <div class="field" style="margin:8px 0 0"><label>Key details (one per line, "Label: value")</label>
       <textarea rows="2" placeholder="WiFi: Yes&#10;Refurbished: 2022" oninput="Q.options[${i}].specs=this.value;upd()">${escHtml(o.specs)}</textarea></div>
     <div class="field" style="margin:8px 0 0"><label>Remarks</label><input value="${escHtml(o.remarks)}" oninput="Q.options[${i}].remarks=this.value;upd()"></div>
-    <div class="field" style="margin:8px 0 0"><label>Photo</label>
-      <div class="photo-drop">
-        ${o.photo ? `<img src="${o.photo}" alt="">` : '<span class="ph">no photo</span>'}
-        <input type="file" accept="image/*" style="border:none;padding:4px 0;background:none" onchange="onOptionPhoto(this, ${i})">
-      </div>
+    <div class="field" style="margin:8px 0 0"><label>Photos (optional — select one or several)</label>
+      <div class="ac-photos-list">${(o.photos || []).map((p, j) =>
+        `<div class="ac-thumb"><img src="${p}" alt=""><button type="button" class="ac-thumb-x" title="Remove" onclick="delOptionPhoto(${i}, ${j})">✕</button></div>`
+      ).join('') || '<span class="ph" style="align-self:center">no photos yet</span>'}</div>
+      <label class="addbtn" style="display:block; text-align:center; margin-top:8px; cursor:pointer">+ Add photos
+        <input type="file" accept="image/*" multiple onchange="onOptionPhoto(this, ${i})" hidden></label>
     </div>
   </div>`).join('');
 }
 function onOptionPhoto(input, i){
-  const file = input.files && input.files[0];
-  if (!file) return;
-  downscaleImage(file, 640, dataUrl => {
-    Q.options[i].photo = dataUrl;
-    renderFormOptions();
-    upd();
-  });
+  const files = [...(input.files || [])];
+  input.value = '';
+  if (!files.length) return;
+  if (!Array.isArray(Q.options[i].photos)) Q.options[i].photos = [];
+  let pending = files.length;
+  files.forEach(f => downscaleImage(f, 900, dataUrl => {
+    Q.options[i].photos.push(dataUrl);
+    if (--pending === 0){ renderFormOptions(); upd(); }
+  }));
 }
+function delOptionPhoto(i, j){ Q.options[i].photos.splice(j, 1); renderFormOptions(); upd(); }
 
 function addLeg(){ Q.legs.push({ date: '', from: '', to: '', etd: 'TBA', time: '', remarks: '' }); renderFormLegs(); upd(); }
 function delLeg(i){ Q.legs.splice(i, 1); renderFormLegs(); upd(); }
@@ -372,11 +410,16 @@ function initResizer(){
   document.addEventListener('visibilitychange', () => {
     if (Q && document.visibilityState === 'visible') scheduleReflow(Q);
   });
-  // keep the preview fitted to the viewport as it changes (rotate / resize)
+  // keep the preview fitted to its container however the size changes —
+  // window resize, device rotation, breakpoint stacking, or panel drag.
   let _resizeT;
   window.addEventListener('resize', () => {
     clearTimeout(_resizeT);
     _resizeT = setTimeout(fitPreview, 120);
   });
+  if (window.ResizeObserver){
+    const area = document.querySelector('.preview-area');
+    if (area) new ResizeObserver(() => fitPreview()).observe(area);
+  }
   window.addEventListener('beforeprint', () => { if (Q) reflowNow(Q); });
 })();

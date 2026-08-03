@@ -77,6 +77,7 @@ body{font-family:'Poppins',ui-sans-serif,system-ui,-apple-system,sans-serif; bac
 .panel h2:first-child{margin-top:4px;}
 .panel h2 .rule{flex:1; height:1px; background:var(--line);}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.grid2.solo{grid-template-columns:1fr;}  /* one field left (e.g. currency when aircraft hidden) */
 .field{margin-bottom:10px;}
 .field label{display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:4px; letter-spacing:.3px;}
 .field input,.field select,.field textarea{width:100%; font-family:inherit; font-size:13px; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:9px 10px; background:#fbfcfe; outline:none; transition:.15s;}
@@ -116,9 +117,6 @@ body{font-family:'Poppins',ui-sans-serif,system-ui,-apple-system,sans-serif; bac
 .check input[type=checkbox]:focus-visible{outline:2px solid var(--navy); outline-offset:2px;}
 .actions-sticky{position:fixed; bottom:0; left:0; width:var(--panel-w); background:#fff; border-top:1px solid var(--line); border-right:1px solid var(--line); padding:12px 20px; display:flex; gap:10px; z-index:40;}
 .actions-sticky .btn{flex:1; padding:10px 6px;}
-.photo-drop{display:flex; align-items:center; gap:10px;}
-.photo-drop img{width:74px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:#fff;}
-.photo-drop .ph{width:74px; height:50px; border-radius:6px; border:1.5px dashed var(--line); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--muted);}
 details.settings{border:1px solid var(--line); border-radius:10px; background:#fbfcfe; margin-bottom:10px;}
 details.settings summary{cursor:pointer; font-size:12px; font-weight:600; color:var(--navy); padding:10px 12px; list-style:none;}
 details.settings summary::-webkit-details-marker{display:none;}
@@ -159,13 +157,32 @@ details.settings .inner{padding:2px 12px 12px;}
 .ac-thumb img{width:74px; height:52px; object-fit:cover; border-radius:7px; border:1px solid var(--line);}
 .ac-thumb-x{position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:var(--red); color:#fff; font-size:10px; line-height:1; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.3);}
 
-/* preview: aircraft gallery page */
-.gallery-name{font-size:18px; font-weight:700; color:var(--navy); letter-spacing:.3px; margin:2px 0 12px;}
-.gallery-grid{display:grid; gap:12px;}
-.gallery-grid .gcell img{width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:12px; border:1px solid #dfe6ef; display:block; box-shadow:0 6px 18px rgba(15,40,80,.12);}
-.gallery-grid.single .gcell img{aspect-ratio:16/9;}
-.gallery-details{margin-top:16px; font-size:12.5px; line-height:1.7; color:#2b3a52;}
-.gallery-details .gd-title{font-size:11.5px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--red-dark); margin-bottom:6px;}
+/* preview: aircraft page — luxury spec sheet */
+.ac-eyebrow{font-size:10.5px; font-weight:700; letter-spacing:3.5px; text-transform:uppercase; color:var(--red-dark);}
+.ac-name{font-size:28px; font-weight:700; color:var(--navy); letter-spacing:.3px; margin:4px 0 0; padding-bottom:14px; position:relative;}
+.ac-name::after{content:''; position:absolute; left:0; bottom:0; width:66px; height:3px; background:var(--red); border-radius:2px;}
+/* aircraft page: title pinned at top, media block (photos + specs) centred in
+   the remaining space so leftover room is balanced top & bottom — never dumped
+   as a gap between photos and specs or at the foot of the page. */
+#page_gallery .t-body{display:flex; flex-direction:column;}
+#pv_gallery{display:flex; flex-direction:column; flex:1; min-height:0;}
+.ac-eyebrow, .ac-name{flex-shrink:0;}
+.ac-media{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center;}
+/* airy spec grid — balanced columns, hairline rules, per-row dividers */
+.ac-specband{display:grid; row-gap:15px; margin:22px 0 0; padding:16px 0; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; flex-shrink:0;}
+.ac-si{padding:2px 0 2px 26px; border-left:1px solid #eaeef4;}
+.ac-si.first-col{border-left:none; padding-left:0;}
+.ac-si-k{font-size:9.5px; font-weight:700; letter-spacing:2.2px; text-transform:uppercase; color:var(--muted);}
+.ac-si-v{font-size:16px; font-weight:700; color:var(--navy); margin-top:6px; letter-spacing:.2px; line-height:1.3;}
+/* photos — fixed, count-based heights (never stretched, so no odd cropping);
+   radius matches the form section cards (.leg-card = 10px). */
+.ac-photos{flex-shrink:0;}
+.ac-shot{border-radius:10px; overflow:hidden; box-shadow:0 14px 30px rgba(15,40,80,.14); border:1px solid #d8e2ee; background:#eef2f7;}
+.ac-shot img{width:100%; height:100%; object-fit:cover; display:block;}
+.ac-stack{display:flex; flex-direction:column; gap:12px;}
+.ac-grid{display:grid; gap:12px; margin-top:12px;}
+.ac-grid .ac-shot{height:100%;}
+.ac-desc{margin-top:16px; font-size:12.5px; line-height:1.8; color:#2b3a52; flex-shrink:0;}
 .meta-grid .k{font-weight:600; color:var(--navy);}
 .meta-grid .v{border-bottom:1px solid #9fb0c6; padding:0 6px 2px; min-height:19px; font-weight:500;}
 .secbar{display:flex; align-items:center; background:var(--red); color:#fff; border-radius:3px; overflow:hidden; margin:10px 0 0;}
@@ -194,7 +211,10 @@ table.flights td{background:var(--cell); font-size:12px; text-align:center; padd
 .opt-block .ob-name{font-size:14px; font-weight:700; color:var(--navy); letter-spacing:.3px;}
 .opt-block .ob-price{margin-left:auto; font-size:14.5px; font-weight:700; color:var(--red-dark); font-variant-numeric:tabular-nums;}
 .opt-block .ob-body{display:flex; gap:14px; padding:10px 14px;}
-.opt-block .ob-photo{width:168px; height:100px; object-fit:cover; border-radius:6px; border:1px solid #dfe6ef; flex-shrink:0; background:#eef1f6;}
+.opt-block .ob-photos{width:176px; flex-shrink:0; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-content:start;}
+.opt-block .ob-photos.single{grid-template-columns:1fr;}
+.opt-block .ob-photos img{width:100%; height:58px; object-fit:cover; border-radius:6px; border:1px solid #dfe6ef; background:#eef1f6; display:block;}
+.opt-block .ob-photos.single img{height:108px;}
 .opt-block .ob-specs{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:2px 18px; font-size:11.5px; align-content:start;}
 .opt-block .ob-specs .sk{color:var(--muted); font-weight:600;}
 .opt-block .ob-specs .sv2{font-weight:600; color:var(--ink);}

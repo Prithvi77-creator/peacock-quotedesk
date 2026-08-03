@@ -159,9 +159,20 @@ function renderPreview(q){
   // single-aircraft photo gallery page (adaptive grid)
   renderGallery(q);
 
-  // greeting aircraft slot (survives only until the user rewrites the greeting)
+  // greeting aircraft phrase — mode & template aware; in comparison mode it stays
+  // generic (each option names its own aircraft). Survives until the greeting is hand-edited.
   const slot = document.querySelector('#pv_greet [data-slot="aircraft"]');
-  if (slot) slot.textContent = q.meta.aircraft || '________';
+  if (slot){
+    const med = q.meta.template === 'medical';
+    if (q.meta.multiAircraft){
+      slot.innerHTML = med
+        ? 'the <b>following medically-equipped aircraft options</b>'
+        : 'the <b>following aircraft options</b>';
+    } else {
+      const name = escHtml(q.meta.aircraft || '________');
+      slot.innerHTML = med ? `the medically equipped <b>${name}</b>` : `the <b>${name}</b> aircraft`;
+    }
+  }
 
   // flight legs
   const legs = q.legs.length ? q.legs : [{}];
@@ -246,25 +257,79 @@ function withUnscaledPreview(fn){
   return Promise.resolve(fn()).finally(() => { wrap.style.transform = t; wrap.style.marginBottom = m; });
 }
 
-/* Aircraft gallery page — photos + details. Column count (and therefore
-   image size) adapts to how many photos there are: fewer = bigger. */
+/* Aircraft page — premium spec sheet: eyebrow + name, spec tiles parsed from
+   the details, a featured hero photo, and a thumbnail strip for the rest. */
 function renderGallery(q){
   const page = $id('page_gallery');
   const photos = (q.aircraftPhotos || []);
-  const show = !q.meta.multiAircraft && photos.length > 0;
+  const details = (q.aircraftDetails || '').trim();
+  const name = (q.meta.aircraft || '').trim();
+  const show = !q.meta.multiAircraft && q.meta.includeAircraftPage !== false && (photos.length > 0 || !!details);
   page.hidden = !show;
   if (!show) return;
-  $id('pv_gallery_name').textContent = q.meta.aircraft || 'Aircraft';
-  const n = photos.length;
-  const cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4;
-  const grid = $id('pv_gallery_grid');
-  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-  grid.classList.toggle('single', n === 1);
-  grid.innerHTML = photos.map(p => `<div class="gcell"><img src="${p}" alt=""></div>`).join('');
-  const details = (q.aircraftDetails || '').trim();
-  $id('pv_gallery_details').innerHTML = details
-    ? `<div class="gd-title">Aircraft details</div><div class="gd-body">${escHtml(details).replace(/\n/g, '<br>')}</div>`
+
+  // split details into spec tiles ("Label: value") and free description lines,
+  // de-duplicating by label / content so repeated lines never clutter the page
+  const tiles = [], desc = [], seenK = new Set(), seenD = new Set();
+  details.split('\n').forEach(raw => {
+    const line = raw.trim(); if (!line) return;
+    const i = line.indexOf(':');
+    if (i > 0 && i <= 22){
+      const label = line.slice(0, i).trim(), kl = label.toLowerCase();
+      if (seenK.has(kl)) return;
+      seenK.add(kl);
+      tiles.push([label, line.slice(i + 1).trim()]);
+    } else {
+      const dl = line.toLowerCase();
+      if (seenD.has(dl)) return;
+      seenD.add(dl);
+      desc.push(line);
+    }
+  });
+
+  const cap = v => v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+  // balanced column count so rows are even (no lone item / ragged wrap)
+  const n = tiles.length;
+  const cols = n <= 3 ? n : (n === 4 ? 2 : (n <= 6 ? 3 : 4));
+  const specsHtml = tiles.length
+    ? `<div class="ac-specband" style="grid-template-columns:repeat(${cols},1fr)">${tiles.map((t, idx) =>
+        `<div class="ac-si${idx % cols === 0 ? ' first-col' : ''}"><div class="ac-si-k">${escHtml(t[0])}</div><div class="ac-si-v">${escHtml(cap(t[1]))}</div></div>`).join('')}</div>`
     : '';
+
+  // photos use fixed, count-based heights (never stretched to fill, so images
+  // are shaped consistently and not oddly cropped). The whole media block is
+  // centred vertically by CSS, so there is no gap between photos and specs and
+  // no dead space at the foot of the page.
+  //   1  → one wide feature;  2 → two stacked;  3+ → a feature + a row of the rest.
+  let photosHtml = '';
+  if (photos.length){
+    const n = photos.length;
+    const box = (p, h) => `<div class="ac-shot" style="height:${h}px"><img src="${p}" alt=""></div>`;
+    let inner;
+    if (n === 1){
+      inner = box(photos[0], 500);
+    } else if (n === 2){
+      inner = `<div class="ac-stack">${box(photos[0], 320)}${box(photos[1], 320)}</div>`;
+    } else {
+      const rest = photos.slice(1);
+      const cols = Math.min(rest.length, 4);
+      const heroH = n === 3 ? 350 : (n === 4 ? 330 : 310);
+      const rowH  = n === 3 ? 215 : (n === 4 ? 172 : 150);
+      inner = box(photos[0], heroH)
+        + `<div class="ac-grid" style="grid-template-columns:repeat(${cols},1fr); grid-auto-rows:${rowH}px">`
+        + rest.map(p => `<div class="ac-shot"><img src="${p}" alt=""></div>`).join('')
+        + `</div>`;
+    }
+    photosHtml = `<div class="ac-photos">${inner}</div>`;
+  }
+  const descHtml = desc.length
+    ? `<div class="ac-desc">${desc.map(escHtml).join('<br>')}</div>` : '';
+
+  // title pinned at top; photos + specs + description centred as one block
+  $id('pv_gallery').innerHTML =
+    `<div class="ac-eyebrow">Charter Aircraft</div>` +
+    `<div class="ac-name">${escHtml(name) || 'Aircraft'}</div>` +
+    `<div class="ac-media">${photosHtml + specsHtml + descHtml}</div>`;
 }
 
 /* Itinerary summary shown beneath the compact map. */
@@ -315,11 +380,15 @@ function renderOptionsPreview(q){
         return m.length > 1 ? [m[0].trim(), m.slice(1).join(':').trim()] : ['', line.trim()];
       })
     ].filter(s => s[1]);
+    const photos = Array.isArray(o.photos) ? o.photos : (o.photo ? [o.photo] : []);
+    const photoHtml = photos.length
+      ? `<div class="ob-photos${photos.length === 1 ? ' single' : ''}">${photos.map(p => `<img src="${p}" alt="">`).join('')}</div>`
+      : '';
     return `<div class="opt-block">
       <div class="ob-head"><span class="ob-num">${i + 1}</span><span class="ob-name">${escHtml(o.name) || 'Aircraft'}</span>
         <span class="ob-price">${curSymbol(cur)} ${fmtMoney(parseFloat(o.price) || 0, cur)}</span></div>
       <div class="ob-body">
-        ${o.photo ? `<img class="ob-photo" src="${o.photo}" alt="">` : ''}
+        ${photoHtml}
         <div class="ob-specs">${specs.map(s => `${s[0] ? `<span class="sk">${escHtml(s[0])}:</span>` : '<span class="sk"></span>'}<span class="sv2">${escHtml(s[1])}</span>`).join('')}</div>
       </div>
       ${(o.remarks || '').trim() ? `<div class="ob-remarks">${escHtml(o.remarks)}</div>` : ''}
