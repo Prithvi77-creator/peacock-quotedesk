@@ -156,11 +156,8 @@ function renderPreview(q){
   document.querySelectorAll('[data-mrow="aircraft"]').forEach(el =>
     el.style.display = q.meta.multiAircraft ? 'none' : '');
 
-  // optional single-aircraft photo (beside the details)
-  const acWrap = $id('pv_ac_photo_wrap');
-  const showAcPhoto = !q.meta.multiAircraft && !!q.aircraftPhoto;
-  acWrap.hidden = !showAcPhoto;
-  if (showAcPhoto) $id('pv_ac_photo').src = q.aircraftPhoto;
+  // single-aircraft photo gallery page (adaptive grid)
+  renderGallery(q);
 
   // greeting aircraft slot (survives only until the user rewrites the greeting)
   const slot = document.querySelector('#pv_greet [data-slot="aircraft"]');
@@ -249,6 +246,27 @@ function withUnscaledPreview(fn){
   return Promise.resolve(fn()).finally(() => { wrap.style.transform = t; wrap.style.marginBottom = m; });
 }
 
+/* Aircraft gallery page — photos + details. Column count (and therefore
+   image size) adapts to how many photos there are: fewer = bigger. */
+function renderGallery(q){
+  const page = $id('page_gallery');
+  const photos = (q.aircraftPhotos || []);
+  const show = !q.meta.multiAircraft && photos.length > 0;
+  page.hidden = !show;
+  if (!show) return;
+  $id('pv_gallery_name').textContent = q.meta.aircraft || 'Aircraft';
+  const n = photos.length;
+  const cols = n === 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4;
+  const grid = $id('pv_gallery_grid');
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.classList.toggle('single', n === 1);
+  grid.innerHTML = photos.map(p => `<div class="gcell"><img src="${p}" alt=""></div>`).join('');
+  const details = (q.aircraftDetails || '').trim();
+  $id('pv_gallery_details').innerHTML = details
+    ? `<div class="gd-title">Aircraft details</div><div class="gd-body">${escHtml(details).replace(/\n/g, '<br>')}</div>`
+    : '';
+}
+
 /* Itinerary summary shown beneath the compact map. */
 function routeSummary(q){
   const legs = q.legs.filter(l => (l.from || '').trim() || (l.to || '').trim());
@@ -268,23 +286,26 @@ function routeSummary(q){
 
 function renderCostsPreview(q){
   $id('pv_optwrap').innerHTML = '';
-  const gstRate = parseFloat(q.meta.gstRate) || 0;
   const cur = q.meta.currency;
-  const t = computeTotals(q.costs, gstRate);
-  const rows = q.costs.filter(c => (c.label || '').trim() || c.amount !== '').map(c =>
-    `<div class="crow"><span class="cl">${escHtml(c.label) || '&nbsp;'}</span><span class="cv">${fmtMoney(parseFloat(c.amount) || 0, cur)}</span></div>`).join('');
+  const gstOn = q.meta.gstEnabled, gstRate = parseFloat(q.meta.gstRate) || 0;
+  const t = computeTotals(q.costs, gstOn, gstRate, q.postCosts);
+  const rowHtml = c => `<div class="crow"><span class="cl">${escHtml(c.label) || '&nbsp;'}</span><span class="cv">${fmtMoney(parseFloat(c.amount) || 0, cur)}</span></div>`;
+  const rows = q.costs.filter(c => (c.label || '').trim() || c.amount !== '').map(rowHtml).join('');
+  const postRows = q.postCosts.filter(c => (c.label || '').trim() || c.amount !== '').map(rowHtml).join('');
   $id('pv_costs').innerHTML = rows +
     `<div class="crow sub"><span class="cl">Sub Total</span><span class="cv">${fmtMoney(t.sub, cur)}</span></div>` +
-    (gstRate > 0 ? `<div class="crow sub"><span class="cl">GST@${gstRate}%</span><span class="cv">${fmtMoney(t.gst, cur)}</span></div>` : '') +
-    `<div class="crow grand"><span class="cl">All Inclusive Charter Package in ${cur}${gstRate > 0 ? ` with ${gstRate}% GST` : ''}</span><span class="cv">${fmtMoney(t.total, cur)}</span></div>`;
+    (gstOn && gstRate > 0 ? `<div class="crow sub"><span class="cl">GST@${gstRate}%</span><span class="cv">${fmtMoney(t.gst, cur)}</span></div>` : '') +
+    postRows +
+    `<div class="crow grand"><span class="cl">All Inclusive Charter Package in ${cur}${gstOn && gstRate > 0 ? ` incl. ${gstRate}% GST` : ''}</span><span class="cv">${fmtMoney(t.total, cur)}</span></div>`;
   $id('pv_words').textContent = t.total > 0 ? 'Amount in words: ' + amountInWords(t.total, cur) : '';
 }
 
 function renderOptionsPreview(q){
   const cur = q.meta.currency;
-  const gstRate = parseFloat(q.meta.gstRate) || 0;
+  const gstOn = q.meta.gstEnabled, gstRate = parseFloat(q.meta.gstRate) || 0;
   const opts = q.options.filter(o => (o.name || '').trim() || o.price !== '');
   const commons = q.costs.filter(c => (c.label || '').trim() && parseFloat(c.amount));
+  const posts = q.postCosts.filter(c => (c.label || '').trim() && parseFloat(c.amount));
 
   const blocks = opts.map((o, i) => {
     const specs = [
@@ -305,14 +326,16 @@ function renderOptionsPreview(q){
     </div>`;
   }).join('');
 
-  const commonRows = commons.length ? `<div class="costlist opt-totals">
-      ${commons.map(c => `<div class="crow"><span class="cl">${escHtml(c.label)} <span style="color:#6b7a92;font-size:11px">(added to every option)</span></span><span class="cv">${fmtMoney(parseFloat(c.amount) || 0, cur)}</span></div>`).join('')}
+  const extraRow = (c, note) => `<div class="crow"><span class="cl">${escHtml(c.label)} <span style="color:#6b7a92;font-size:11px">(${note})</span></span><span class="cv">${fmtMoney(parseFloat(c.amount) || 0, cur)}</span></div>`;
+  const commonRows = (commons.length || posts.length) ? `<div class="costlist opt-totals">
+      ${commons.map(c => extraRow(c, 'added to every option')).join('')}
+      ${posts.map(c => extraRow(c, 'GST-free, every option')).join('')}
     </div>` : '';
 
   const compare = opts.length ? `<div class="costlist opt-totals">
       ${opts.map((o, i) => {
-        const t = computeOptionTotals(o, commons, gstRate);
-        return `<div class="crow ${i === 0 ? 'sub' : ''}"><span class="cl">Option ${i + 1} — ${escHtml(o.name) || 'Aircraft'}${gstRate > 0 ? ` (incl. ${gstRate}% GST)` : ''}</span><span class="cv">${curSymbol(cur)} ${fmtMoney(t.total, cur)}</span></div>`;
+        const t = computeOptionTotals(o, commons, gstOn, gstRate, posts);
+        return `<div class="crow ${i === 0 ? 'sub' : ''}"><span class="cl">Option ${i + 1} — ${escHtml(o.name) || 'Aircraft'}${gstOn && gstRate > 0 ? ` (incl. ${gstRate}% GST)` : ''}</span><span class="cv">${curSymbol(cur)} ${fmtMoney(t.total, cur)}</span></div>`;
       }).join('')}
     </div>` : '';
 
@@ -323,21 +346,23 @@ function renderOptionsPreview(q){
 
 function renderTotalsBox(q){
   const cur = q.meta.currency, sym = curSymbol(cur);
-  const gstRate = parseFloat(q.meta.gstRate) || 0;
+  const gstOn = q.meta.gstEnabled, gstRate = parseFloat(q.meta.gstRate) || 0;
   if (q.meta.multiAircraft){
     const opts = q.options.filter(o => (o.name || '').trim() || o.price !== '');
     const commons = q.costs.filter(c => (c.label || '').trim() && parseFloat(c.amount));
+    const posts = q.postCosts.filter(c => (c.label || '').trim() && parseFloat(c.amount));
     $id('t_rows').innerHTML = opts.length
       ? opts.map((o, i) => {
-          const t = computeOptionTotals(o, commons, gstRate);
-          return `<div class="trow${i === opts.length - 1 ? '' : ''}"><span>Opt ${i + 1} · ${escHtml(o.name) || '—'}</span><span>${sym} ${fmtMoney(t.total, cur)}</span></div>`;
+          const t = computeOptionTotals(o, commons, gstOn, gstRate, posts);
+          return `<div class="trow"><span>Opt ${i + 1} · ${escHtml(o.name) || '—'}</span><span>${sym} ${fmtMoney(t.total, cur)}</span></div>`;
         }).join('') + `<div class="trow grand"><span>${opts.length} option${opts.length > 1 ? 's' : ''} all-inclusive</span><span>&nbsp;</span></div>`
       : '<div class="trow"><span>No aircraft options yet</span><span>—</span></div>';
   } else {
-    const t = computeTotals(q.costs, gstRate);
+    const t = computeTotals(q.costs, gstOn, gstRate, q.postCosts);
     $id('t_rows').innerHTML =
       `<div class="trow"><span>Sub Total</span><span>${sym} ${fmtMoney(t.sub, cur)}</span></div>` +
-      `<div class="trow"><span>GST @ ${gstRate}%</span><span>${sym} ${fmtMoney(t.gst, cur)}</span></div>` +
+      (gstOn ? `<div class="trow"><span>GST @ ${gstRate}%</span><span>${sym} ${fmtMoney(t.gst, cur)}</span></div>` : `<div class="trow"><span>GST</span><span>Not charged</span></div>`) +
+      (t.post > 0 ? `<div class="trow"><span>GST-free charges</span><span>${sym} ${fmtMoney(t.post, cur)}</span></div>` : '') +
       `<div class="trow grand"><span>All Inclusive</span><span>${sym} ${fmtMoney(t.total, cur)}</span></div>`;
   }
 }

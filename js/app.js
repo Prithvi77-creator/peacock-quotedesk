@@ -17,14 +17,16 @@ function newQuote(template){
   return {
     meta: {
       template, qno: nextQno(), date: todayISO(), aircraft: '', client: '',
-      currency: 'INR', gstRate: tpl.gstDefault, multiAircraft: false,
+      currency: 'INR', gstRate: tpl.gstDefault, gstEnabled: tpl.gstDefault > 0, multiAircraft: false,
       includeTnc: true, includeMap: false, includeNotes: false,
       configuration: '', positioning: ''
     },
     legs: [{ date: '', from: '', to: '', etd: 'TBA', time: '', remarks: '' }],
     costs: deep(tpl.costs),
+    postCosts: [],
     options: [],
-    aircraftPhoto: '',            // optional photo shown on single-aircraft quotes
+    aircraftPhotos: [],           // single-aircraft gallery photos
+    aircraftDetails: '',          // single-aircraft details / specs
     header: {
       coName: ORG.coName,
       coLine: ORG.coLine,
@@ -69,6 +71,7 @@ function switchTemplate(template){
   const tpl = TEMPLATES[template];
   Q.meta.template = template;
   Q.meta.gstRate = tpl.gstDefault;
+  Q.meta.gstEnabled = tpl.gstDefault > 0;
   Q.costs = deep(tpl.costs);
   Q.notes = deep(tpl.notes);
   Q.greeting = tpl.greeting;
@@ -95,12 +98,14 @@ function loadQuoteIntoUI(){
   $('f_configuration').value = Q.meta.configuration || '';
   $('f_positioning').value = Q.meta.positioning || '';
   $('f_addl_notes').value = Q.additionalNotes || '';
+  $('f_ac_details').value = Q.aircraftDetails || '';
   $('med_fields').hidden = Q.meta.template !== 'medical';
   $('notes_field').hidden = !Q.meta.includeNotes;
   $('opt_section').hidden = !Q.meta.multiAircraft;
   $('ac_photo_field').hidden = Q.meta.multiAircraft;
   $('cost_h2').firstChild.textContent = Q.meta.multiAircraft ? 'Common charges (all options) ' : 'Costing ';
-  renderFormLegs(); renderFormCosts(); renderFormOptions(); updateAircraftPhotoUI();
+  syncGstUI();
+  renderFormLegs(); renderFormCosts(); renderFormPostCosts(); renderFormOptions(); updateAircraftPhotoUI();
   buildEditableRegions(Q);
   upd();
 }
@@ -115,10 +120,20 @@ function quoteTouched(){ /* stateless: nothing is saved */ }
 function curChanged(){
   const sel = document.getElementById('f_cur');
   Q.meta.currency = sel.value;
-  const gstEl = document.getElementById('f_gst');
-  if (sel.value === 'USD' && String(Q.meta.gstRate) === '18'){ Q.meta.gstRate = 0; gstEl.value = 0; }
-  if (sel.value === 'INR' && String(Q.meta.gstRate) === '0' && Q.meta.template !== 'medical'){ Q.meta.gstRate = 18; gstEl.value = 18; }
+  // convenience: USD (international) drops GST; INR restores it (except medical)
+  if (sel.value === 'USD') Q.meta.gstEnabled = false;
+  else if (Q.meta.template !== 'medical') Q.meta.gstEnabled = true;
+  syncGstUI();
   upd();
+}
+function onGstToggle(){
+  Q.meta.gstEnabled = document.getElementById('f_gst_on').checked;
+  syncGstUI();
+  upd();
+}
+function syncGstUI(){
+  document.getElementById('f_gst_on').checked = Q.meta.gstEnabled;
+  document.getElementById('gst_rate_wrap').hidden = !Q.meta.gstEnabled;
 }
 function onMultiToggle(){
   Q.meta.multiAircraft = document.getElementById('f_multi').checked;
@@ -131,20 +146,24 @@ function onMultiToggle(){
   upd();
 }
 
-/* single-aircraft photo (optional) */
+/* single-aircraft photos (multiple) — shown on a dedicated gallery page */
 function updateAircraftPhotoUI(){
-  const has = !!Q.aircraftPhoto;
-  document.getElementById('ac_photo_drop').innerHTML =
-    (has ? `<img src="${Q.aircraftPhoto}" alt="">` : '<span class="ph">no photo</span>')
-    + `<input type="file" accept="image/*" style="border:none;padding:4px 0;background:none" onchange="onAircraftPhoto(this)">`
-    + (has ? `<button type="button" class="del" onclick="removeAircraftPhoto()">✕ remove</button>` : '');
+  const list = document.getElementById('ac_photos_list');
+  list.innerHTML = Q.aircraftPhotos.map((p, i) =>
+    `<div class="ac-thumb"><img src="${p}" alt=""><button type="button" class="ac-thumb-x" title="Remove" onclick="removeAircraftPhoto(${i})">✕</button></div>`
+  ).join('') || '<span class="ph" style="align-self:center">no photos yet</span>';
 }
-function onAircraftPhoto(input){
-  const file = input.files && input.files[0];
-  if (!file) return;
-  downscaleImage(file, 900, dataUrl => { Q.aircraftPhoto = dataUrl; updateAircraftPhotoUI(); upd(); });
+function onAircraftPhotos(input){
+  const files = [...(input.files || [])];
+  input.value = '';
+  if (!files.length) return;
+  let pending = files.length;
+  files.forEach(f => downscaleImage(f, 1100, dataUrl => {
+    Q.aircraftPhotos.push(dataUrl);
+    if (--pending === 0){ updateAircraftPhotoUI(); upd(); }
+  }));
 }
-function removeAircraftPhoto(){ Q.aircraftPhoto = ''; updateAircraftPhotoUI(); upd(); }
+function removeAircraftPhoto(i){ Q.aircraftPhotos.splice(i, 1); updateAircraftPhotoUI(); upd(); }
 function onNotesToggle(){
   Q.meta.includeNotes = document.getElementById('f_notes').checked;
   document.getElementById('notes_field').hidden = !Q.meta.includeNotes;
@@ -176,6 +195,14 @@ function renderFormCosts(){
     <input value="${escHtml(c.label)}" placeholder="Description" oninput="Q.costs[${i}].label=this.value;upd()">
     <input type="number" value="${c.amount === '' ? '' : c.amount}" placeholder="Amount" oninput="Q.costs[${i}].amount=this.value;upd()">
     <button class="del" onclick="delCost(${i})">✕</button>
+  </div>`).join('');
+}
+function renderFormPostCosts(){
+  document.getElementById('postcosts').innerHTML = Q.postCosts.map((c, i) => `
+  <div class="cost-row">
+    <input value="${escHtml(c.label)}" placeholder="Description (GST-free)" oninput="Q.postCosts[${i}].label=this.value;upd()">
+    <input type="number" value="${c.amount === '' ? '' : c.amount}" placeholder="Amount" oninput="Q.postCosts[${i}].amount=this.value;upd()">
+    <button class="del" onclick="delPostCost(${i})">✕</button>
   </div>`).join('');
 }
 function blankOption(){ return { name: '', year: '', seats: '', specs: '', price: '', remarks: '', photo: '' }; }
@@ -216,6 +243,8 @@ function addLeg(){ Q.legs.push({ date: '', from: '', to: '', etd: 'TBA', time: '
 function delLeg(i){ Q.legs.splice(i, 1); renderFormLegs(); upd(); }
 function addCost(){ Q.costs.push({ label: '', amount: '' }); renderFormCosts(); upd(); }
 function delCost(i){ Q.costs.splice(i, 1); renderFormCosts(); upd(); }
+function addPostCost(){ Q.postCosts.push({ label: '', amount: '' }); renderFormPostCosts(); upd(); }
+function delPostCost(i){ Q.postCosts.splice(i, 1); renderFormPostCosts(); upd(); }
 function addOption(){ Q.options.push(blankOption()); renderFormOptions(); upd(); }
 function delOption(i){ Q.options.splice(i, 1); renderFormOptions(); upd(); }
 
@@ -285,6 +314,24 @@ function toast(msg, ms){
   t.textContent = msg; t.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => t.classList.remove('show'), ms || 4200);
+}
+
+/* ================= password gate ================= */
+/* Client-side deterrent only — NOT real security (the value lives in the page).
+   Real access control comes with the PHP/server phase. */
+const APP_PASSWORD = '1249';
+function submitGate(e){
+  if (e) e.preventDefault();
+  const inp = document.getElementById('gate_pw');
+  if (inp.value === APP_PASSWORD){
+    try { sessionStorage.setItem('pjl.auth', '1'); } catch (_){ }
+    document.getElementById('gate').hidden = true;
+    return false;
+  }
+  document.getElementById('gate_err').hidden = false;
+  inp.value = '';
+  inp.focus();
+  return false;
 }
 
 /* ================= resizable editor panel ================= */

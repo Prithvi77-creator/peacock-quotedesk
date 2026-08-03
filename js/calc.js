@@ -48,19 +48,27 @@ function amountInWords(total, cur){
     : 'US Dollars ' + inWordsUSD(total) + ' Only';
 }
 
-/* -- totals -- */
-/* Single-aircraft: sum of cost lines. Multi-aircraft: option price + common charges. */
-function computeTotals(costs, gstRate){
-  let sub = 0;
-  costs.forEach(c => { sub += parseFloat(c.amount) || 0; });
-  const gst = sub * (gstRate || 0) / 100;
-  return { sub, gst, total: sub + gst };
+/* -- totals --
+   sub  = taxable cost lines
+   gst  = charged only when gstEnabled
+   post = additional charges that are NEVER taxed (added after GST)
+   total = sub + gst + post */
+function sumAmounts(list){
+  let s = 0;
+  (list || []).forEach(c => { s += parseFloat(c.amount) || 0; });
+  return s;
 }
-function computeOptionTotals(option, commonCosts, gstRate){
-  let sub = parseFloat(option.price) || 0;
-  commonCosts.forEach(c => { sub += parseFloat(c.amount) || 0; });
-  const gst = sub * (gstRate || 0) / 100;
-  return { sub, gst, total: sub + gst };
+function computeTotals(costs, gstEnabled, gstRate, postCosts){
+  const sub = sumAmounts(costs);
+  const gst = gstEnabled ? sub * (parseFloat(gstRate) || 0) / 100 : 0;
+  const post = sumAmounts(postCosts);
+  return { sub, gst, post, total: sub + gst + post };
+}
+function computeOptionTotals(option, commonCosts, gstEnabled, gstRate, postCosts){
+  const sub = (parseFloat(option.price) || 0) + sumAmounts(commonCosts);
+  const gst = gstEnabled ? sub * (parseFloat(gstRate) || 0) / 100 : 0;
+  const post = sumAmounts(postCosts);
+  return { sub, gst, post, total: sub + gst + post };
 }
 
 function fmtDateDisplay(d){

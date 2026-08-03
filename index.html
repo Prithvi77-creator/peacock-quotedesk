@@ -9,9 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=9">
+<link rel="stylesheet" href="css/styles.css?v=13">
 </head>
 <body>
+
+<!-- ===== password gate (client-side deterrent only) ===== -->
+<div id="gate" class="gate" hidden>
+  <form class="gate-card" onsubmit="return submitGate(event)">
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo gate-logo" alt="Peacock Jetlines">
+    <div class="gate-title">Charter Quotation System</div>
+    <div class="gate-sub">Peacock Jetlines &middot; team access only</div>
+    <div class="gate-err" id="gate_err" hidden>Incorrect password. Please try again.</div>
+    <input type="password" id="gate_pw" class="gate-input" placeholder="Enter password" autocomplete="off" inputmode="numeric">
+    <button type="submit" class="btn btn-red gate-btn">Unlock</button>
+  </form>
+</div>
+<script>
+  if (sessionStorage.getItem('pjl.auth') !== '1'){
+    var _g = document.getElementById('gate');
+    _g.hidden = false;
+    var _i = document.getElementById('gate_pw'); if (_i) setTimeout(function(){ _i.focus(); }, 30);
+  }
+</script>
 
 <div class="topbar">
   <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="Peacock Jetlines">
@@ -57,9 +76,14 @@
         <div class="field"><label>Positioning</label><input id="f_positioning" placeholder="e.g. Base — Kolkata" oninput="M().positioning=this.value;upd()"></div>
       </div>
     </div>
-    <div class="field" id="ac_photo_field">
-      <label>Aircraft photo (optional)</label>
-      <div class="photo-drop" id="ac_photo_drop"></div>
+    <div id="ac_photo_field">
+      <div class="field"><label>Aircraft photos (optional — select one or several)</label>
+        <div class="ac-photos-list" id="ac_photos_list"></div>
+        <label class="addbtn" style="display:block; text-align:center; margin-top:8px; cursor:pointer">+ Add photos
+          <input type="file" accept="image/*" multiple onchange="onAircraftPhotos(this)" hidden></label>
+      </div>
+      <div class="field"><label>Aircraft details (optional)</label>
+        <textarea id="f_ac_details" rows="3" placeholder="Year, seats, cabin, range, Wi-Fi… (one per line)" oninput="Q.aircraftDetails=this.value;upd()"></textarea></div>
     </div>
 
     <div id="opt_section" hidden>
@@ -76,12 +100,16 @@
     <h2 id="cost_h2">Costing <span class="rule"></span></h2>
     <div id="costs"></div>
     <button class="addbtn" onclick="addCost()">+ Add cost line</button>
-    <div class="grid2" style="margin-top:10px">
-      <div class="field"><label>GST %</label><input id="f_gst" type="number" min="0" max="28" step="0.1" oninput="M().gstRate=this.value;upd()"></div>
-      <div class="field"><label>&nbsp;</label>
-        <label class="check" style="margin-top:8px"><input type="checkbox" id="f_tnc" onchange="M().includeTnc=this.checked;upd()"> Include T&amp;C pages</label>
-      </div>
-    </div>
+    <label class="check" style="margin-top:12px"><input type="checkbox" id="f_gst_on" onchange="onGstToggle()"> Charge GST on the above</label>
+    <div id="gst_rate_wrap" class="field" hidden style="margin-top:6px"><label>GST %</label><input id="f_gst" type="number" min="0" max="28" step="0.1" oninput="M().gstRate=this.value;upd()"></div>
+
+    <h2>Additional charges — GST-free <span class="rule"></span></h2>
+    <div id="postcosts"></div>
+    <button class="addbtn" onclick="addPostCost()">+ Add GST-free charge</button>
+    <p class="hint">Added after GST and never taxed — e.g. reimbursements or statutory fees, whether GST is on or off.</p>
+
+    <h2>Document pages <span class="rule"></span></h2>
+    <label class="check"><input type="checkbox" id="f_tnc" onchange="M().includeTnc=this.checked;upd()"> Include T&amp;C pages</label>
     <label class="check"><input type="checkbox" id="f_map" onchange="M().includeMap=this.checked;upd()"> Include route map page</label>
     <label class="check"><input type="checkbox" id="f_notes" onchange="onNotesToggle()"> Include additional notes / information page</label>
     <div id="notes_field" hidden>
@@ -137,10 +165,7 @@
           <div id="pv_posbar_wrap" hidden>
             <div class="secbar" style="margin:0 0 12px"><span class="sb-ic">&#43;</span><span class="sb-t" id="pv_posbar"></span></div>
           </div>
-          <div class="meta-row">
-            <div class="meta-grid" id="pv_meta"></div>
-            <div class="ac-photo-wrap" id="pv_ac_photo_wrap" hidden><img class="ac-photo" id="pv_ac_photo" alt=""></div>
-          </div>
+          <div class="meta-grid" id="pv_meta"></div>
           <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_flights_title"></span></div>
           <table class="flights">
             <thead><tr>
@@ -158,6 +183,34 @@
           <div class="pn-title" id="pv_notes_title"></div>
           <div id="pv_notes"></div>
         </div>
+      </div>
+
+      <!-- AIRCRAFT GALLERY PAGE (optional, single-aircraft) -->
+      <div class="page" id="page_gallery" hidden>
+        <div class="overflow-flag">Content exceeds A4 — remove some photos</div>
+        <div class="t-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
+          <div class="t-title">Aircraft</div>
+        </div>
+        <div class="t-body">
+          <div class="gallery-name" id="pv_gallery_name"></div>
+          <div class="gallery-grid" id="pv_gallery_grid"></div>
+          <div class="gallery-details" id="pv_gallery_details"></div>
+        </div>
+        <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
+      </div>
+
+      <!-- ADDITIONAL NOTES PAGE (optional) — right after the costing page -->
+      <div class="page" id="page_notes" hidden>
+        <div class="overflow-flag">Content exceeds A4 — shorten the notes</div>
+        <div class="t-header">
+          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
+          <div class="t-title" id="pv_notes_page_title"></div>
+        </div>
+        <div class="t-body">
+          <div class="addl-notes" id="pv_addl_notes"></div>
+        </div>
+        <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
       </div>
 
       <!-- ROUTE MAP PAGE -->
@@ -207,19 +260,6 @@
         <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
       </div>
 
-      <!-- ADDITIONAL NOTES PAGE (optional) -->
-      <div class="page" id="page_notes" hidden>
-        <div class="overflow-flag">Content exceeds A4 — shorten the notes</div>
-        <div class="t-header">
-          <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
-          <div class="t-title" id="pv_notes_page_title"></div>
-        </div>
-        <div class="t-body">
-          <div class="addl-notes" id="pv_addl_notes"></div>
-        </div>
-        <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -229,13 +269,15 @@
 
 <!-- ?v=N cache-busts local assets: bump the number after editing any css/js
      so browsers (and the client) fetch the new file instead of a cached copy. -->
-<script src="js/assets.js?v=9"></script>
-<script src="js/templates.js?v=9"></script>
-<script src="js/calc.js?v=9"></script>
-<script src="js/geo.js?v=9"></script>
-<script src="js/map.js?v=9"></script>
-<script src="js/store.js?v=9"></script>
-<script src="js/render.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/assets.js?v=13"></script>
+<script src="js/templates.js?v=13"></script>
+<script src="js/calc.js?v=13"></script>
+<script src="js/geo.js?v=13"></script>
+<script src="js/india-admin.js?v=13"></script>
+<script src="js/cities.js?v=13"></script>
+<script src="js/map.js?v=13"></script>
+<script src="js/store.js?v=13"></script>
+<script src="js/render.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
 </body>
 </html>

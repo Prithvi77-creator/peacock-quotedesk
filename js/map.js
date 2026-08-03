@@ -1,86 +1,78 @@
 /* ============================================================
-   Peacock QuoteDesk — stylized SVG route diagram
-   Offline-safe: no tiles, no APIs, no country borders.
-   Known cities → geographic auto-fit plot; any unknown city →
-   clean schematic chain, so the PDF never shows a broken map.
+   Peacock QuoteDesk — geographic route map
+   Offline vector basemap (world land + official India outline +
+   India state/district detail) with a comprehensive city gazetteer
+   (GeoNames cities15000). No tiles, no APIs — stays PDF-crisp.
    ============================================================ */
 
-/* [lat, lon] — Indian cities/airports first, then common international */
-const CITY_COORDS = {
-  'delhi':[28.61,77.20],'new delhi':[28.61,77.20],'del':[28.61,77.20],
-  'mumbai':[19.09,72.87],'bom':[19.09,72.87],'chhatrapati shivaji':[19.09,72.87],'juhu':[19.10,72.83],
-  'chennai':[13.00,80.18],'maa':[13.00,80.18],
-  'kolkata':[22.65,88.45],'ccu':[22.65,88.45],'netaji subash':[22.65,88.45],'netaji subhash':[22.65,88.45],
-  'bangalore':[13.20,77.71],'bengaluru':[13.20,77.71],'blr':[13.20,77.71],'hal':[12.95,77.67],
-  'hyderabad':[17.24,78.43],'hyd':[17.24,78.43],'shamshabad':[17.24,78.43],
-  'goa':[15.38,73.83],'goi':[15.38,73.83],'dabolim':[15.38,73.83],'mopa':[15.74,73.86],
-  'ahmedabad':[23.07,72.63],'amd':[23.07,72.63],
-  'pune':[18.58,73.92],'pnq':[18.58,73.92],
-  'jaipur':[26.82,75.81],'jai':[26.82,75.81],
-  'lucknow':[26.76,80.88],'lko':[26.76,80.88],
-  'srinagar':[33.99,74.77],'sxr':[33.99,74.77],
-  'leh':[34.14,77.55],'ixl':[34.14,77.55],
-  'chandigarh':[30.67,76.79],'ixc':[30.67,76.79],
-  'amritsar':[31.71,74.80],'atq':[31.71,74.80],
-  'dehradun':[30.19,78.18],'ded':[30.19,78.18],'jolly grant':[30.19,78.18],
-  'shimla':[31.08,77.07],'kullu':[31.88,77.15],'bhuntar':[31.88,77.15],'dharamshala':[32.17,76.26],'kangra':[32.17,76.26],
-  'varanasi':[25.45,82.86],'vns':[25.45,82.86],
-  'prayagraj':[25.44,81.73],'allahabad':[25.44,81.73],
-  'agra':[27.16,77.96],'kanpur':[26.40,80.41],'gaya':[24.74,84.95],'patna':[25.59,85.09],
-  'bhopal':[23.29,77.34],'indore':[22.72,75.80],'raipur':[21.18,81.74],'ranchi':[23.31,85.32],
-  'bhubaneswar':[20.24,85.82],'bbi':[20.24,85.82],
-  'nagpur':[21.09,79.05],'nag':[21.09,79.05],
-  'surat':[21.11,72.74],'rajkot':[22.31,70.78],'vadodara':[22.33,73.23],'bhavnagar':[21.75,72.19],
-  'udaipur':[24.62,73.90],'jodhpur':[26.25,73.05],'jaisalmer':[26.89,70.86],'bikaner':[28.07,73.20],
-  'kochi':[10.15,76.40],'cochin':[10.15,76.40],'cok':[10.15,76.40],
-  'thiruvananthapuram':[8.48,76.92],'trivandrum':[8.48,76.92],'trv':[8.48,76.92],
-  'coimbatore':[11.03,77.04],'cjb':[11.03,77.04],
-  'madurai':[9.83,78.09],'tirupati':[13.63,79.54],'vijayawada':[16.53,80.80],
-  'visakhapatnam':[17.72,83.22],'vizag':[17.72,83.22],
-  'mangalore':[12.96,74.89],'hubli':[15.36,75.08],'belgaum':[15.86,74.62],
-  'guwahati':[26.11,91.59],'gau':[26.11,91.59],
-  'bagdogra':[26.68,88.33],'ixb':[26.68,88.33],'siliguri':[26.68,88.33],'darjeeling':[26.68,88.33],
-  'imphal':[24.76,93.90],'agartala':[23.89,91.24],'aizawl':[23.84,92.62],'shillong':[25.70,91.98],
-  'dibrugarh':[27.48,95.02],'jorhat':[26.73,94.18],'silchar':[24.91,92.98],
-  'port blair':[11.64,92.73],'ixz':[11.64,92.73],
-  'katra':[32.99,74.95],'jammu':[32.69,74.84],
-  'kandla':[23.11,70.10],'porbandar':[21.65,69.66],'diu':[20.71,70.92],
-  'dubai':[25.25,55.36],'dxb':[25.25,55.36],'al maktoum':[24.90,55.16],'dwc':[24.90,55.16],
-  'abu dhabi':[24.43,54.65],'auh':[24.43,54.65],'sharjah':[25.33,55.52],'shj':[25.33,55.52],
-  'doha':[25.27,51.61],'doh':[25.27,51.61],
-  'muscat':[23.59,58.28],'mct':[23.59,58.28],
-  'riyadh':[24.96,46.70],'jeddah':[21.68,39.16],
-  'singapore':[1.36,103.99],'sin':[1.36,103.99],'seletar':[1.42,103.87],
-  'bangkok':[13.69,100.75],'bkk':[13.69,100.75],'don mueang':[13.91,100.60],
-  'kathmandu':[27.70,85.36],'ktm':[27.70,85.36],
-  'colombo':[7.18,79.88],'cmb':[7.18,79.88],
-  'male':[4.19,73.53],'mle':[4.19,73.53],'maldives':[4.19,73.53],
-  'dhaka':[23.84,90.40],'dac':[23.84,90.40],
-  'yangon':[16.91,96.13],'hong kong':[22.31,113.91],'hkg':[22.31,113.91],
-  'kuala lumpur':[2.75,101.71],'kul':[2.75,101.71],
-  'almaty':[43.35,77.04],'tashkent':[41.26,69.28],'baku':[40.47,50.05],
-  'london':[51.47,-0.46],'lhr':[51.47,-0.46],'luton':[51.87,-0.37],'farnborough':[51.28,-0.78],
-  'paris':[49.01,2.55],'le bourget':[48.96,2.44],'geneva':[46.24,6.11],'zurich':[47.46,8.55],
-  'frankfurt':[50.03,8.57],'moscow':[55.97,37.41],'istanbul':[41.28,28.75]
+/* Lazy-parsed gazetteer: normalised city/state name -> [lat, lon].
+   Source data lives in cities.js as a compact "name\tlat\tlon" string. */
+let _cityMap = null;
+function cityMap(){
+  if (_cityMap) return _cityMap;
+  _cityMap = new Map();
+  const s = CITY_DB;
+  let i = 0;
+  while (i < s.length){
+    let nl = s.indexOf('\n', i); if (nl < 0) nl = s.length;
+    const t1 = s.indexOf('\t', i);
+    const t2 = t1 >= 0 ? s.indexOf('\t', t1 + 1) : -1;
+    if (t1 >= 0 && t2 >= 0 && t2 < nl){
+      _cityMap.set(s.slice(i, t1), [ +s.slice(t1 + 1, t2), +s.slice(t2 + 1, nl) ]);
+    }
+    i = nl + 1;
+  }
+  return _cityMap;
+}
+
+/* airport / alternate names → the city they serve (checked before the gazetteer) */
+const CITY_ALIASES = {
+  'netaji subhas chandra bose':'kolkata','netaji subhas':'kolkata','netaji subash':'kolkata',
+  'chhatrapati shivaji maharaj':'mumbai','chhatrapati shivaji':'mumbai','sahar':'mumbai',
+  'indira gandhi':'delhi','kempegowda':'bengaluru','bangalore':'bengaluru',
+  'rajiv gandhi':'hyderabad','shamshabad':'hyderabad','begumpet':'hyderabad',
+  'sardar vallabhbhai patel':'ahmedabad','jolly grant':'dehradun',
+  'lokpriya gopinath bordoloi':'guwahati','al maktoum':'dubai','maktoum':'dubai',
+  'bombay':'mumbai','madras':'chennai','calcutta':'kolkata','trivandrum':'thiruvananthapuram',
+  'calicut':'kozhikode','pondicherry':'puducherry','gurgaon':'gurugram','new york':'new york city'
+};
+/* common IATA codes → city key */
+const IATA = {
+  DEL:'delhi',BOM:'mumbai',MAA:'chennai',CCU:'kolkata',BLR:'bengaluru',HYD:'hyderabad',GOI:'goa',
+  GOX:'goa',AMD:'ahmedabad',PNQ:'pune',COK:'kochi',JAI:'jaipur',LKO:'lucknow',IXC:'chandigarh',
+  ATQ:'amritsar',SXR:'srinagar',IXL:'leh',IXB:'siliguri',GAU:'guwahati',PAT:'patna',BBI:'bhubaneswar',
+  NAG:'nagpur',IDR:'indore',VNS:'varanasi',TRV:'thiruvananthapuram',IXZ:'port blair',JDH:'jodhpur',
+  DXB:'dubai',DWC:'dubai',AUH:'abu dhabi',SHJ:'sharjah',DOH:'doha',MCT:'muscat',RUH:'riyadh',
+  SIN:'singapore',BKK:'bangkok',KUL:'kuala lumpur',HKG:'hong kong',CMB:'colombo',KTM:'kathmandu',
+  MLE:'male',DAC:'dhaka',LHR:'london',CDG:'paris',JFK:'new york city'
 };
 
+function normCity(s){
+  return String(s || '').toLowerCase().replace(/[.'’`]/g,'').replace(/[-_/]/g,' ').replace(/\s+/g,' ').trim();
+}
+function stripAirport(s){
+  return s.replace(/\b(international|intl|int l|int|airport|apt|aerodrome|airbase|air base|airfield|afs|afb|domestic|terminal)\b/g,' ').replace(/\s+/g,' ').trim();
+}
+
+/* Resolve free-text place → coords. Exact matching only (no loose substring),
+   so it never mis-plots. Tries full name, airport-stripped, each comma part,
+   aliases, then IATA. Returns {name, ll:[lat,lon]} or null (→ schematic). */
 function resolveCity(name){
   const raw = String(name || '').trim();
   if (!raw) return null;
-  let s = raw.toLowerCase()
-    .replace(/int(ernationa)?l?\.?\s+airport/g,' ')
-    .replace(/\bairport\b/g,' ')
-    .replace(/[().]/g,' ')
-    .replace(/\s+/g,' ').trim();
-  if (CITY_COORDS[s]) return { name: raw, ll: CITY_COORDS[s] };
-  // try each comma-separated part, longest keys first so 'new delhi' beats 'delhi'
-  const keys = Object.keys(CITY_COORDS).sort((a,b) => b.length - a.length);
-  const parts = s.split(',').map(p => p.trim()).filter(Boolean);
-  for (const part of [s, ...parts]){
-    for (const k of keys){
-      if (part === k || part.includes(k)) return { name: raw, ll: CITY_COORDS[k] };
-    }
+  const db = cityMap();
+  const cand = [];
+  const full = normCity(raw);
+  cand.push(full, stripAirport(full));
+  raw.split(',').forEach(p => { const n = stripAirport(normCity(p)); if (n) cand.push(n); });
+  for (const c of cand){
+    if (!c) continue;
+    const alias = CITY_ALIASES[c];
+    if (alias && db.has(alias)) return { name: raw, ll: db.get(alias) };
+    if (db.has(c)) return { name: raw, ll: db.get(c) };
   }
+  const up = raw.trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(up) && IATA[up] && db.has(IATA[up])) return { name: raw, ll: db.get(IATA[up]) };
   return null;
 }
 
@@ -173,6 +165,34 @@ function polysPath(polys, Plon){
   return d;
 }
 
+/* per-polygon bbox cache for any polygon array (world / states / districts) */
+const _bboxCache = new WeakMap();
+function bboxesOf(polys){
+  let c = _bboxCache.get(polys);
+  if (c) return c;
+  c = polys.map(rings => {
+    let a = 180, b = 90, cc = -180, d = -90;
+    for (const ring of rings) for (let j = 0; j < ring.length; j++){
+      const lon = ring[j][0], lat = ring[j][1];
+      if (lon < a) a = lon; if (lat < b) b = lat; if (lon > cc) cc = lon; if (lat > d) d = lat;
+    }
+    return [a, b, cc, d];
+  });
+  _bboxCache.set(polys, c);
+  return c;
+}
+/* stroke (no fill) the outlines of polygons intersecting the visible window */
+function strokePolys(polys, win, Plon, color, width, opacity){
+  const bb = bboxesOf(polys);
+  let out = '';
+  for (let i = 0; i < polys.length; i++){
+    const b = bb[i];
+    if (b[2] < win[0] || b[0] > win[1] || b[3] < win[2] || b[1] > win[3]) continue;
+    out += `<path d="${polysPath([polys[i]], Plon)}" fill="none" stroke="${color}" stroke-width="${width}" opacity="${opacity}"/>`;
+  }
+  return out;
+}
+
 /* Real geographic map: projected country outlines + the route on top. */
 function geoMapSVG(legs, W, H){
   const stops = new Map();
@@ -184,23 +204,25 @@ function geoMapSVG(legs, W, H){
   const lats = pts.map(p => p.ll[0]), lons = pts.map(p => p.ll[1]);
   let minLat = Math.min(...lats), maxLat = Math.max(...lats);
   let minLon = Math.min(...lons), maxLon = Math.max(...lons);
-  const spanLat = Math.max(maxLat - minLat, 2.5), spanLon = Math.max(maxLon - minLon, 2.5);
-  // generous padding so real land fills the frame around the route
-  minLat -= spanLat * 0.45; maxLat += spanLat * 0.45;
-  minLon -= spanLon * 0.40; maxLon += spanLon * 0.40;
+  // half-spans (with a minimum) + modest padding, then expand the shorter axis
+  // to match the frame's aspect so the map fills it with no wasted margin.
+  const cLat = (minLat + maxLat) / 2, cLon = (minLon + maxLon) / 2;
+  let hLat = Math.max((maxLat - minLat) / 2, 1.75) * 1.35;
+  let hLon = Math.max((maxLon - minLon) / 2, 1.75) * 1.35;
+  const midLat = cLat, kx = Math.cos(midLat * Math.PI / 180);
+  const frameAR = W / H;
+  if ((hLon * kx) / hLat < frameAR) hLon = hLat * frameAR / kx;   // route too tall → widen
+  else hLat = hLon * kx / frameAR;                                 // route too wide → heighten
+  minLat = cLat - hLat; maxLat = cLat + hLat; minLon = cLon - hLon; maxLon = cLon + hLon;
   const PAD = 4, IW = W - PAD*2, IH = H - PAD*2;
-  const midLat = (minLat + maxLat) / 2, kx = Math.cos(midLat * Math.PI/180);
   const sc = Math.min(IW / ((maxLon - minLon) * kx), IH / (maxLat - minLat));
   const usedW = (maxLon - minLon) * kx * sc, usedH = (maxLat - minLat) * sc;
   const ox = PAD + (IW - usedW)/2, oy = PAD + (IH - usedH)/2;
   const Plon = (lon, lat) => [ ox + (lon - minLon) * kx * sc, oy + (maxLat - lat) * sc ];
   const P = ll => Plon(ll[1], ll[0]);
 
-  // visible lon/lat window (inverse-project the frame corners)
-  const wLonMin = minLon + (0 - ox) / (kx * sc);
-  const wLonMax = minLon + (W - ox) / (kx * sc);
-  const wLatMax = maxLat - (0 - oy) / sc;
-  const wLatMin = maxLat - (H - oy) / sc;
+  // visible window ≈ the aspect-matched bbox
+  const wLonMin = minLon, wLonMax = maxLon, wLatMin = minLat, wLatMax = maxLat;
 
   // neighbouring land (context), culled to the visible window
   const bb = geoBBoxes();
@@ -211,13 +233,22 @@ function geoMapSVG(legs, W, H){
     land += `<path d="${polysPath([WORLD_GEO[i]], Plon)}" fill="#e7ebe2" stroke="#c4d0dd" stroke-width="0.6" fill-rule="evenodd"/>`;
   }
 
-  // India — official outline drawn on top so it is always depicted correctly
+  // India — official outline on top (always depicted correctly), with state /
+  // district detail drawn on the fill so close-up routes are never a plain map.
   const ib = indiaBBox();
+  const win = [wLonMin, wLonMax, wLatMin, wLatMax];
+  const viewSpan = wLatMax - wLatMin;              // vertical extent = zoom proxy
   let india = '';
   if (!(ib[2] < wLonMin || ib[0] > wLonMax || ib[3] < wLatMin || ib[1] > wLatMax)){
     const dp = polysPath(INDIA_GEO, Plon);
-    india = `<path d="${dp}" fill="#f4efe1" stroke="#ffffff" stroke-width="2.4" fill-rule="evenodd"/>`
-          + `<path d="${dp}" fill="none" stroke="#33465f" stroke-width="1" fill-rule="evenodd"/>`;
+    let admin = '';
+    if (viewSpan < 22){
+      if (viewSpan < 6) admin += strokePolys(DISTRICTS_GEO, win, Plon, '#d1d8cb', 0.5, 0.85);
+      admin += strokePolys(STATES_GEO, win, Plon, '#a9b5c4', 0.8, 1);
+    }
+    india = `<path d="${dp}" fill="#f4efe1" stroke="#ffffff" stroke-width="2.6" fill-rule="evenodd"/>`
+          + admin
+          + `<path d="${dp}" fill="none" stroke="#33465f" stroke-width="1.1" fill-rule="evenodd"/>`;
   }
 
   // route: soft casing + gradient arc + plane badge + beacon pins + haloed labels
