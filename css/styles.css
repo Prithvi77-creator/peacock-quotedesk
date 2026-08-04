@@ -88,6 +88,16 @@ body{font-family:'Poppins',ui-sans-serif,system-ui,-apple-system,sans-serif; bac
 .seg button:last-child{border-right:none;}
 .seg button.active{background:var(--navy); color:#fff;}
 .leg-card,.cost-row,.opt-card{border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; background:#fbfcfe; position:relative;}
+/* city search dropdown */
+.city-field{position:relative;}
+.city-ac{position:absolute; top:calc(100% + 3px); left:0; right:0; z-index:70; background:#fff; border:1px solid var(--line); border-radius:9px; box-shadow:0 14px 32px rgba(15,30,60,.2); max-height:236px; overflow:auto;}
+.city-ac[hidden]{display:none;}
+.city-ac-item{display:flex; flex-direction:column; gap:1px; padding:7px 11px; cursor:pointer; border-bottom:1px solid #f0f3f8;}
+.city-ac-item:last-child{border-bottom:none;}
+.city-ac-item:hover{background:#f4f7fb;}
+.city-ac .ci-name{font-size:12.5px; font-weight:600; color:var(--navy);}
+.city-ac .ci-typ{font-size:9.5px; font-weight:700; color:var(--red-dark); text-transform:uppercase; letter-spacing:.6px; margin-left:4px;}
+.city-ac .ci-sub{font-size:11px; color:var(--muted);}
 .leg-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
 .leg-head span{font-size:11px; font-weight:700; color:var(--navy); letter-spacing:.5px;}
 .del{background:none; border:none; color:#c0392b; cursor:pointer; font-size:12px; font-weight:600; padding:2px 6px; border-radius:5px;}
@@ -153,9 +163,38 @@ details.settings .inner{padding:2px 12px 12px;}
 .meta-grid{display:grid; grid-template-columns:170px 1fr; row-gap:6px; max-width:560px; font-size:13.5px; margin-bottom:10px;}
 /* form: aircraft photo thumbnails */
 .ac-photos-list{display:flex; flex-wrap:wrap; gap:8px;}
-.ac-thumb{position:relative; width:74px; height:52px;}
-.ac-thumb img{width:74px; height:52px; object-fit:cover; border-radius:7px; border:1px solid var(--line);}
-.ac-thumb-x{position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:var(--red); color:#fff; font-size:10px; line-height:1; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.3);}
+.ac-thumb{position:relative; width:74px; height:52px; border-radius:7px; overflow:hidden; border:1px solid var(--line);}
+.ac-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+.ac-thumb-x{position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%; border:none; background:var(--red); color:#fff; font-size:10px; line-height:1; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center;}
+.ac-thumb-edit{position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; border:none; background:rgba(15,30,60,.72); color:#fff; font-size:12px; line-height:1; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center;}
+.ac-thumb-edit:hover{background:var(--navy);}
+
+/* image resize / reframe modal */
+.pa-modal{position:fixed; inset:0; z-index:120; background:rgba(10,22,44,.62); display:flex; align-items:center; justify-content:center; padding:20px;}
+.pa-modal[hidden]{display:none;}
+.pa-card{background:#fff; border-radius:16px; padding:22px; width:420px; max-width:100%; box-shadow:0 26px 64px rgba(0,0,0,.4);}
+.pa-title{font-size:16px; font-weight:700; color:var(--navy);}
+.pa-sub{font-size:11.5px; color:var(--muted); margin:3px 0 14px;}
+.pa-frame{position:relative; width:100%; aspect-ratio:3/2; border-radius:12px; overflow:hidden; background:#eef1f6; border:1px solid var(--line); cursor:grab; touch-action:none;}
+.pa-frame:active{cursor:grabbing;}
+.pa-frame img{width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; user-select:none;}
+.pa-row{display:flex; align-items:center; gap:12px; margin-top:14px;}
+.pa-seg{margin:0; flex:1;}
+.pa-lbl{font-size:12px; font-weight:600; color:var(--navy); width:44px;}
+.pa-row input[type=range]{flex:1; accent-color:var(--red);}
+.pa-actions{display:flex; gap:10px; margin-top:18px;}
+.pa-actions .btn{flex:1;}
+.pa-actions .btn-ghost{background:#eef1f6; color:var(--navy);}
+.pa-actions .btn-ghost:hover{background:#e2e8f2;}
+/* crop overlay */
+.pa-crop{position:absolute; inset:0;}
+.pa-crop[hidden]{display:none;}
+.pa-crop-box{position:absolute; border:2px solid #fff; box-shadow:0 0 0 9999px rgba(0,0,0,.5); cursor:move; box-sizing:border-box; touch-action:none;}
+.pa-ch{position:absolute; width:16px; height:16px; background:#fff; border:2px solid var(--red); border-radius:50%; box-sizing:border-box; touch-action:none;}
+.pa-ch.tl{left:-9px; top:-9px; cursor:nwse-resize;}
+.pa-ch.tr{right:-9px; top:-9px; cursor:nesw-resize;}
+.pa-ch.bl{left:-9px; bottom:-9px; cursor:nesw-resize;}
+.pa-ch.br{right:-9px; bottom:-9px; cursor:nwse-resize;}
 
 /* preview: aircraft page — luxury spec sheet */
 .ac-eyebrow{font-size:10.5px; font-weight:700; letter-spacing:3.5px; text-transform:uppercase; color:var(--red-dark);}
@@ -164,8 +203,8 @@ details.settings .inner{padding:2px 12px 12px;}
 /* aircraft page: title pinned at top, media block (photos + specs) centred in
    the remaining space so leftover room is balanced top & bottom — never dumped
    as a gap between photos and specs or at the foot of the page. */
-#page_gallery .t-body{display:flex; flex-direction:column;}
-#pv_gallery{display:flex; flex-direction:column; flex:1; min-height:0;}
+.ac-tbody{display:flex; flex-direction:column;}
+.ac-pv{display:flex; flex-direction:column; flex:1; min-height:0;}
 .ac-eyebrow, .ac-name{flex-shrink:0;}
 .ac-media{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center;}
 /* airy spec grid — balanced columns, hairline rules, per-row dividers */
@@ -177,7 +216,7 @@ details.settings .inner{padding:2px 12px 12px;}
 /* photos — fixed, count-based heights (never stretched, so no odd cropping);
    radius matches the form section cards (.leg-card = 10px). */
 .ac-photos{flex-shrink:0;}
-.ac-shot{border-radius:10px; overflow:hidden; box-shadow:0 14px 30px rgba(15,40,80,.14); border:1px solid #d8e2ee; background:#eef2f7;}
+.ac-shot{border-radius:10px; overflow:hidden; box-shadow:0 14px 30px rgba(15,40,80,.14); border:1px solid #d8e2ee; background:transparent;}
 .ac-shot img{width:100%; height:100%; object-fit:cover; display:block;}
 .ac-stack{display:flex; flex-direction:column; gap:12px;}
 .ac-grid{display:grid; gap:12px; margin-top:12px;}
@@ -197,7 +236,10 @@ table.flights td{background:var(--cell); font-size:12px; text-align:center; padd
 .costlist .crow .cl{font-weight:500;}
 .costlist .crow .cv{font-weight:600; font-variant-numeric:tabular-nums;}
 .costlist .crow.sub .cl,.costlist .crow.sub .cv{font-weight:600; color:var(--navy);}
-.costlist .crow.grand{background:#f4f7fb; border-bottom:2px solid var(--navy);}
+/* highlighted sub-total & GST rows (a step below the grand total) */
+.costlist .crow.subttl{background:#eef3fa; border-top:1px solid #dbe6f3;}
+.costlist .crow.subttl .cl,.costlist .crow.subttl .cv{font-weight:700; color:var(--navy);}
+.costlist .crow.grand{background:#dde8f4; border-bottom:2px solid var(--navy);}
 .costlist .crow.grand .cl,.costlist .crow.grand .cv{font-weight:700; color:var(--navy);}
 .inwords{font-size:11.5px; color:var(--muted); margin-top:6px; font-style:italic;}
 .q-footer{margin-top:auto; background:var(--navy); color:#dce6f2; padding:11px 44px 12px; flex-shrink:0;}
@@ -213,8 +255,9 @@ table.flights td{background:var(--cell); font-size:12px; text-align:center; padd
 .opt-block .ob-body{display:flex; gap:14px; padding:10px 14px;}
 .opt-block .ob-photos{width:176px; flex-shrink:0; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-content:start;}
 .opt-block .ob-photos.single{grid-template-columns:1fr;}
-.opt-block .ob-photos img{width:100%; height:58px; object-fit:cover; border-radius:6px; border:1px solid #dfe6ef; background:#eef1f6; display:block;}
-.opt-block .ob-photos.single img{height:108px;}
+.opt-block .ob-photos .ob-shot{height:58px; border-radius:6px; overflow:hidden; border:1px solid #dfe6ef; background:transparent;}
+.opt-block .ob-photos.single .ob-shot{height:108px;}
+.opt-block .ob-photos img{width:100%; height:100%; object-fit:cover; display:block;}
 .opt-block .ob-specs{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:2px 18px; font-size:11.5px; align-content:start;}
 .opt-block .ob-specs .sk{color:var(--muted); font-weight:600;}
 .opt-block .ob-specs .sv2{font-weight:600; color:var(--ink);}

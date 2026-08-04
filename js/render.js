@@ -259,14 +259,24 @@ function withUnscaledPreview(fn){
 
 /* Aircraft page — premium spec sheet: eyebrow + name, spec tiles parsed from
    the details, a featured hero photo, and a thumbnail strip for the rest. */
-function renderGallery(q){
-  const page = $id('page_gallery');
-  const photos = (q.aircraftPhotos || []);
-  const details = (q.aircraftDetails || '').trim();
-  const name = (q.meta.aircraft || '').trim();
-  const show = !q.meta.multiAircraft && q.meta.includeAircraftPage !== false && (photos.length > 0 || !!details);
-  page.hidden = !show;
-  if (!show) return;
+/* ---- photo model: a photo is {src, fit, zoom, x, y}; legacy plain strings still work ---- */
+function photoSrc(p){ return typeof p === 'string' ? p : ((p && p.src) || ''); }
+function mkPhoto(src){ return { src: src, fit: 'cover', zoom: 1, x: 50, y: 50 }; }
+function photoFrameStyle(p){
+  if (!p || typeof p === 'string') return '';
+  const fit = p.fit === 'contain' ? 'contain' : 'cover';
+  const x = (p.x == null ? 50 : p.x), y = (p.y == null ? 50 : p.y), z = p.zoom || 1;
+  let s = `object-fit:${fit};object-position:${x}% ${y}%;`;
+  if (z && z !== 1) s += `transform:scale(${z});transform-origin:${x}% ${y}%;`;
+  return s;
+}
+function photoImg(p){ return `<img src="${photoSrc(p)}" style="${photoFrameStyle(p)}" alt="">`; }
+
+/* Build the inner HTML of an aircraft page (eyebrow + name + photos + specs).
+   Reused by the single-aircraft page and by each comparison-option page. */
+function galleryInnerHTML(name, photos, details){
+  photos = photos || [];
+  details = (details || '').trim();
 
   // split details into spec tiles ("Label: value") and free description lines,
   // de-duplicating by label / content so repeated lines never clutter the page
@@ -289,8 +299,8 @@ function renderGallery(q){
 
   const cap = v => v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
   // balanced column count so rows are even (no lone item / ragged wrap)
-  const n = tiles.length;
-  const cols = n <= 3 ? n : (n === 4 ? 2 : (n <= 6 ? 3 : 4));
+  const nt = tiles.length;
+  const cols = nt <= 3 ? nt : (nt === 4 ? 2 : (nt <= 6 ? 3 : 4));
   const specsHtml = tiles.length
     ? `<div class="ac-specband" style="grid-template-columns:repeat(${cols},1fr)">${tiles.map((t, idx) =>
         `<div class="ac-si${idx % cols === 0 ? ' first-col' : ''}"><div class="ac-si-k">${escHtml(t[0])}</div><div class="ac-si-v">${escHtml(cap(t[1]))}</div></div>`).join('')}</div>`
@@ -304,7 +314,7 @@ function renderGallery(q){
   let photosHtml = '';
   if (photos.length){
     const n = photos.length;
-    const box = (p, h) => `<div class="ac-shot" style="height:${h}px"><img src="${p}" alt=""></div>`;
+    const box = (p, h) => `<div class="ac-shot" style="height:${h}px">${photoImg(p)}</div>`;
     let inner;
     if (n === 1){
       inner = box(photos[0], 500);
@@ -312,12 +322,12 @@ function renderGallery(q){
       inner = `<div class="ac-stack">${box(photos[0], 320)}${box(photos[1], 320)}</div>`;
     } else {
       const rest = photos.slice(1);
-      const cols = Math.min(rest.length, 4);
+      const gcols = Math.min(rest.length, 4);
       const heroH = n === 3 ? 350 : (n === 4 ? 330 : 310);
       const rowH  = n === 3 ? 215 : (n === 4 ? 172 : 150);
       inner = box(photos[0], heroH)
-        + `<div class="ac-grid" style="grid-template-columns:repeat(${cols},1fr); grid-auto-rows:${rowH}px">`
-        + rest.map(p => `<div class="ac-shot"><img src="${p}" alt=""></div>`).join('')
+        + `<div class="ac-grid" style="grid-template-columns:repeat(${gcols},1fr); grid-auto-rows:${rowH}px">`
+        + rest.map(p => `<div class="ac-shot">${photoImg(p)}</div>`).join('')
         + `</div>`;
     }
     photosHtml = `<div class="ac-photos">${inner}</div>`;
@@ -326,10 +336,47 @@ function renderGallery(q){
     ? `<div class="ac-desc">${desc.map(escHtml).join('<br>')}</div>` : '';
 
   // title pinned at top; photos + specs + description centred as one block
-  $id('pv_gallery').innerHTML =
-    `<div class="ac-eyebrow">Charter Aircraft</div>` +
-    `<div class="ac-name">${escHtml(name) || 'Aircraft'}</div>` +
-    `<div class="ac-media">${photosHtml + specsHtml + descHtml}</div>`;
+  return `<div class="ac-eyebrow">Charter Aircraft</div>`
+    + `<div class="ac-name">${escHtml(name) || 'Aircraft'}</div>`
+    + `<div class="ac-media">${photosHtml + specsHtml + descHtml}</div>`;
+}
+
+function renderGallery(q){
+  // single-aircraft: the built-in gallery page
+  const page = $id('page_gallery');
+  const photos = (q.aircraftPhotos || []);
+  const details = (q.aircraftDetails || '').trim();
+  const name = (q.meta.aircraft || '').trim();
+  const show = !q.meta.multiAircraft && q.meta.includeAircraftPage !== false && (photos.length > 0 || !!details);
+  page.hidden = !show;
+  if (show) $id('pv_gallery').innerHTML = galleryInnerHTML(name, photos, details);
+
+  // comparison: one dedicated aircraft page per option
+  renderOptionGalleryPages(q);
+}
+
+/* In comparison mode, add a full aircraft page for every option (photos + specs),
+   just like the single-aircraft page — one page per aircraft. */
+function renderOptionGalleryPages(q){
+  const host = $id('opt_gallery_pages');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!q.meta.multiAircraft || q.meta.includeAircraftPage === false) return;
+  const site = getPath(q, 'site') ?? '';
+  (q.options || []).forEach((o, idx) => {
+    const photos = o.photos || [];
+    const details = [o.year ? `Year: ${o.year}` : '', o.seats ? `Seats: ${o.seats}` : '', (o.specs || '').trim()]
+      .filter(Boolean).join('\n');
+    if (!photos.length && !details) return;          // nothing to show for this option — skip its page
+    const label = (o.name || '').trim() || `Option ${idx + 1}`;
+    const pg = document.createElement('div');
+    pg.className = 'page';
+    pg.innerHTML =
+      `<div class="t-header"><img src="${LOGO_SRC}" class="js-logo" alt=""><div class="t-title">Aircraft — Option ${idx + 1}</div></div>`
+      + `<div class="t-body ac-tbody"><div class="ac-pv">${galleryInnerHTML(label, photos, details)}</div></div>`
+      + `<div class="t-footer"><div class="redrule"></div><div class="site js-site-echo">${escHtml(site)}</div></div>`;
+    host.appendChild(pg);
+  });
 }
 
 /* Itinerary summary shown beneath the compact map. */
@@ -358,7 +405,7 @@ function renderCostsPreview(q){
   const rows = q.costs.filter(c => (c.label || '').trim() || c.amount !== '').map(rowHtml).join('');
   const postRows = q.postCosts.filter(c => (c.label || '').trim() || c.amount !== '').map(rowHtml).join('');
   $id('pv_costs').innerHTML = rows +
-    `<div class="crow sub"><span class="cl">Sub Total</span><span class="cv">${fmtMoney(t.sub, cur)}</span></div>` +
+    `<div class="crow subttl"><span class="cl">Sub Total</span><span class="cv">${fmtMoney(t.sub, cur)}</span></div>` +
     (gstOn && gstRate > 0 ? `<div class="crow sub"><span class="cl">GST@${gstRate}%</span><span class="cv">${fmtMoney(t.gst, cur)}</span></div>` : '') +
     postRows +
     `<div class="crow grand"><span class="cl">All Inclusive Charter Package in ${cur}${gstOn && gstRate > 0 ? ` incl. ${gstRate}% GST` : ''}</span><span class="cv">${fmtMoney(t.total, cur)}</span></div>`;
@@ -382,7 +429,7 @@ function renderOptionsPreview(q){
     ].filter(s => s[1]);
     const photos = Array.isArray(o.photos) ? o.photos : (o.photo ? [o.photo] : []);
     const photoHtml = photos.length
-      ? `<div class="ob-photos${photos.length === 1 ? ' single' : ''}">${photos.map(p => `<img src="${p}" alt="">`).join('')}</div>`
+      ? `<div class="ob-photos${photos.length === 1 ? ' single' : ''}">${photos.map(p => `<div class="ob-shot">${photoImg(p)}</div>`).join('')}</div>`
       : '';
     return `<div class="opt-block">
       <div class="ob-head"><span class="ob-num">${i + 1}</span><span class="ob-name">${escHtml(o.name) || 'Aircraft'}</span>

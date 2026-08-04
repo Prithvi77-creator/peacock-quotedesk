@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=23">
+<link rel="stylesheet" href="css/styles.css?v=31">
 </head>
 <body>
 
@@ -41,6 +41,50 @@
   <div class="spacer"></div>
   <button class="btn btn-ghost" onclick="newQuotation()">+ New quotation</button>
   <button class="btn btn-red" id="dlbtn" onclick="downloadPDF()">&#11015;&nbsp; Download PDF</button>
+</div>
+
+<!-- ===== image resize / reframe modal ===== -->
+<div id="photo_adjust" class="pa-modal" hidden onclick="if(event.target===this)paDone()">
+  <div class="pa-card">
+    <div class="pa-title">Resize &amp; reframe photo</div>
+    <div class="pa-sub">Drag to reposition &middot; slider to zoom &middot; choose the fill &middot; or crop the image.</div>
+    <div class="pa-frame" id="pa_frame" onmousedown="paDragStart(event)" ontouchstart="paDragStart(event)">
+      <img id="pa_img" alt="">
+      <div class="pa-crop" id="pa_crop" hidden>
+        <div class="pa-crop-box" id="pa_crop_box" onmousedown="paCropDown(event,'move')" ontouchstart="paCropDown(event,'move')">
+          <span class="pa-ch tl" onmousedown="paCropDown(event,'tl')" ontouchstart="paCropDown(event,'tl')"></span>
+          <span class="pa-ch tr" onmousedown="paCropDown(event,'tr')" ontouchstart="paCropDown(event,'tr')"></span>
+          <span class="pa-ch bl" onmousedown="paCropDown(event,'bl')" ontouchstart="paCropDown(event,'bl')"></span>
+          <span class="pa-ch br" onmousedown="paCropDown(event,'br')" ontouchstart="paCropDown(event,'br')"></span>
+        </div>
+      </div>
+    </div>
+    <div id="pa_normal">
+      <div class="pa-row">
+        <div class="seg pa-seg" id="pa_fitseg">
+          <button type="button" data-fit="cover" onclick="paSetFit('cover')">Fill frame</button>
+          <button type="button" data-fit="contain" onclick="paSetFit('contain')">Show whole image</button>
+        </div>
+      </div>
+      <div class="pa-row">
+        <label class="pa-lbl">Zoom</label>
+        <input type="range" id="pa_zoom" min="1" max="3" step="0.02" oninput="paSetZoom(this.value)">
+      </div>
+      <div class="pa-actions">
+        <button type="button" class="btn btn-ghost" onclick="paReset()">Reset</button>
+        <button type="button" class="btn btn-ghost" onclick="paCropStart()">Crop</button>
+        <button type="button" class="btn btn-red" onclick="paDone()">Done</button>
+      </div>
+    </div>
+    <div id="pa_cropbar" hidden>
+      <div class="pa-sub" style="margin:2px 0 12px">Drag the box, or its corners, to select the area to keep. Reset restores the original photo.</div>
+      <div class="pa-actions">
+        <button type="button" class="btn btn-ghost" onclick="paCropReset()">Reset</button>
+        <button type="button" class="btn btn-ghost" onclick="paCropCancel()">Cancel</button>
+        <button type="button" class="btn btn-red" onclick="paCropApply()">Apply crop</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ================= EDITOR ================= -->
@@ -193,11 +237,14 @@
           <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="js-logo" alt="">
           <div class="t-title">Aircraft</div>
         </div>
-        <div class="t-body">
-          <div id="pv_gallery"></div>
+        <div class="t-body ac-tbody">
+          <div id="pv_gallery" class="ac-pv"></div>
         </div>
         <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
       </div>
+
+      <!-- one aircraft page per option (comparison mode) — filled by render.js -->
+      <div id="opt_gallery_pages"></div>
 
       <!-- ADDITIONAL NOTES PAGE (optional) — right after the costing page -->
       <div class="page" id="page_notes" hidden>
@@ -268,16 +315,16 @@
 
 <!-- ?v=N cache-busts local assets: bump the number after editing any css/js
      so browsers (and the client) fetch the new file instead of a cached copy. -->
-<script src="js/assets.js?v=23"></script>
-<script src="js/templates.js?v=23"></script>
-<script src="js/fleet.js?v=23"></script>
-<script src="js/calc.js?v=23"></script>
-<script src="js/geo.js?v=23"></script>
-<script src="js/india-admin.js?v=23"></script>
-<script src="js/cities.js?v=23"></script>
-<script src="js/map.js?v=23"></script>
-<script src="js/store.js?v=23"></script>
-<script src="js/render.js?v=23"></script>
-<script src="js/app.js?v=23"></script>
+<script src="js/assets.js?v=31"></script>
+<script src="js/templates.js?v=31"></script>
+<script src="js/fleet.js?v=31"></script>
+<script src="js/calc.js?v=31"></script>
+<script src="js/geo.js?v=31"></script>
+<script src="js/india-admin.js?v=31"></script>
+<script src="js/cities.js?v=31"></script>
+<script src="js/map.js?v=31"></script>
+<script src="js/store.js?v=31"></script>
+<script src="js/render.js?v=31"></script>
+<script src="js/app.js?v=31"></script>
 </body>
 </html>

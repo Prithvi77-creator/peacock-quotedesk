@@ -108,14 +108,19 @@ let _mapKey = null, _mapSVG = '';
 function buildRouteSVG(legs, W, H){
   W = Math.max(320, Math.round(W || 706)); H = Math.max(320, Math.round(H || 820));
   const active = legs.filter(l => (l.from || '').trim() && (l.to || '').trim());
-  const key = W + 'x' + H + '|' + JSON.stringify(active.map(l => [l.from, l.to, l.date, l.time]));
+  const key = W + 'x' + H + '|' + JSON.stringify(active.map(l => [l.from, l.to, l.fromCoord, l.toCoord, l.date, l.time]));
   if (key === _mapKey) return _mapSVG;
   _mapKey = key;
   let svg;
   if (!active.length){
     svg = svgFrame(W, H, `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="15" fill="#7089a8" font-family="Poppins,sans-serif">Add flight legs to see the route</text>`);
   } else {
-    const resolved = active.map(l => ({ ...l, F: resolveCity(l.from), T: resolveCity(l.to) }));
+    // prefer exact coordinates picked from the city search; fall back to the
+    // offline gazetteer for free-typed names
+    const pick = (name, coord) => (Array.isArray(coord) && coord.length === 2)
+      ? { name: String(name || '').split(',')[0].trim() || String(name || ''), ll: coord }
+      : resolveCity(name);
+    const resolved = active.map(l => ({ ...l, F: pick(l.from, l.fromCoord), T: pick(l.to, l.toCoord) }));
     svg = resolved.every(l => l.F && l.T) ? geoMapSVG(resolved, W, H) : chainSVG(active, W, H);
   }
   _mapSVG = svg;
