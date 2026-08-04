@@ -427,15 +427,11 @@ function renderOptionsPreview(q){
         return m.length > 1 ? [m[0].trim(), m.slice(1).join(':').trim()] : ['', line.trim()];
       })
     ].filter(s => s[1]);
-    const photos = Array.isArray(o.photos) ? o.photos : (o.photo ? [o.photo] : []);
-    const photoHtml = photos.length
-      ? `<div class="ob-photos${photos.length === 1 ? ' single' : ''}">${photos.map(p => `<div class="ob-shot">${photoImg(p)}</div>`).join('')}</div>`
-      : '';
+    // photos live on the dedicated aircraft pages, not in the costing comparison
     return `<div class="opt-block">
       <div class="ob-head"><span class="ob-num">${i + 1}</span><span class="ob-name">${escHtml(o.name) || 'Aircraft'}</span>
         <span class="ob-price">${curSymbol(cur)} ${fmtMoney(parseFloat(o.price) || 0, cur)}</span></div>
       <div class="ob-body">
-        ${photoHtml}
         <div class="ob-specs">${specs.map(s => `${s[0] ? `<span class="sk">${escHtml(s[0])}:</span>` : '<span class="sk"></span>'}<span class="sv2">${escHtml(s[1])}</span>`).join('')}</div>
       </div>
       ${(o.remarks || '').trim() ? `<div class="ob-remarks">${escHtml(o.remarks)}</div>` : ''}
