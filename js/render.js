@@ -274,7 +274,7 @@ function photoImg(p){ return `<img src="${photoSrc(p)}" style="${photoFrameStyle
 
 /* Build the inner HTML of an aircraft page (eyebrow + name + photos + specs).
    Reused by the single-aircraft page and by each comparison-option page. */
-function galleryInnerHTML(name, photos, details){
+function galleryInnerHTML(name, photos, details, priceHtml){
   photos = photos || [];
   details = (details || '').trim();
 
@@ -335,9 +335,10 @@ function galleryInnerHTML(name, photos, details){
   const descHtml = desc.length
     ? `<div class="ac-desc">${desc.map(escHtml).join('<br>')}</div>` : '';
 
-  // title pinned at top; photos + specs + description centred as one block
+  // title pinned at top; optional price; photos + specs + description centred as one block
   return `<div class="ac-eyebrow">Charter Aircraft</div>`
     + `<div class="ac-name">${escHtml(name) || 'Aircraft'}</div>`
+    + (priceHtml || '')
     + `<div class="ac-media">${photosHtml + specsHtml + descHtml}</div>`;
 }
 
@@ -362,18 +363,29 @@ function renderOptionGalleryPages(q){
   if (!host) return;
   host.innerHTML = '';
   if (!q.meta.multiAircraft || q.meta.includeAircraftPage === false) return;
+  const cur = q.meta.currency;
+  const gstOn = q.meta.gstEnabled, gstRate = parseFloat(q.meta.gstRate) || 0;
+  const commons = q.costs.filter(c => (c.label || '').trim() && parseFloat(c.amount));
+  const posts = q.postCosts.filter(c => (c.label || '').trim() && parseFloat(c.amount));
   const site = getPath(q, 'site') ?? '';
   (q.options || []).forEach((o, idx) => {
     const photos = o.photos || [];
     const details = [o.year ? `Year: ${o.year}` : '', o.seats ? `Seats: ${o.seats}` : '', (o.specs || '').trim()]
       .filter(Boolean).join('\n');
-    if (!photos.length && !details) return;          // nothing to show for this option — skip its page
+    const hasPrice = o.price !== '' && o.price != null && !isNaN(parseFloat(o.price));
+    if (!photos.length && !details && !hasPrice) return;   // nothing to show for this option — skip its page
+    // same all-inclusive total shown in the costing comparison
+    const t = computeOptionTotals(o, commons, gstOn, gstRate, posts);
+    const priceHtml = hasPrice
+      ? `<div class="ac-price"><span class="ac-price-lbl">All-inclusive${gstOn && gstRate > 0 ? ` · incl. ${gstRate}% GST` : ''}</span>`
+        + `<span class="ac-price-v">${curSymbol(cur)} ${fmtMoney(t.total, cur)}</span></div>`
+      : '';
     const label = (o.name || '').trim() || `Option ${idx + 1}`;
     const pg = document.createElement('div');
     pg.className = 'page';
     pg.innerHTML =
       `<div class="t-header"><img src="${LOGO_SRC}" class="js-logo" alt=""><div class="t-title">Aircraft — Option ${idx + 1}</div></div>`
-      + `<div class="t-body ac-tbody"><div class="ac-pv">${galleryInnerHTML(label, photos, details)}</div></div>`
+      + `<div class="t-body ac-tbody"><div class="ac-pv">${galleryInnerHTML(label, photos, details, priceHtml)}</div></div>`
       + `<div class="t-footer"><div class="redrule"></div><div class="site js-site-echo">${escHtml(site)}</div></div>`;
     host.appendChild(pg);
   });
@@ -419,25 +431,8 @@ function renderOptionsPreview(q){
   const commons = q.costs.filter(c => (c.label || '').trim() && parseFloat(c.amount));
   const posts = q.postCosts.filter(c => (c.label || '').trim() && parseFloat(c.amount));
 
-  const blocks = opts.map((o, i) => {
-    const specs = [
-      ['Year', o.year], ['Seats', o.seats],
-      ...String(o.specs || '').split('\n').filter(Boolean).map(line => {
-        const m = line.split(':');
-        return m.length > 1 ? [m[0].trim(), m.slice(1).join(':').trim()] : ['', line.trim()];
-      })
-    ].filter(s => s[1]);
-    // photos live on the dedicated aircraft pages, not in the costing comparison
-    return `<div class="opt-block">
-      <div class="ob-head"><span class="ob-num">${i + 1}</span><span class="ob-name">${escHtml(o.name) || 'Aircraft'}</span>
-        <span class="ob-price">${curSymbol(cur)} ${fmtMoney(parseFloat(o.price) || 0, cur)}</span></div>
-      <div class="ob-body">
-        <div class="ob-specs">${specs.map(s => `${s[0] ? `<span class="sk">${escHtml(s[0])}:</span>` : '<span class="sk"></span>'}<span class="sv2">${escHtml(s[1])}</span>`).join('')}</div>
-      </div>
-      ${(o.remarks || '').trim() ? `<div class="ob-remarks">${escHtml(o.remarks)}</div>` : ''}
-    </div>`;
-  }).join('');
-
+  // per-option photos, specs and price live on the dedicated aircraft pages;
+  // the costing comparison shows only the all-inclusive total per option
   const extraRow = (c, note) => `<div class="crow"><span class="cl">${escHtml(c.label)} <span style="color:#6b7a92;font-size:11px">(${note})</span></span><span class="cv">${fmtMoney(parseFloat(c.amount) || 0, cur)}</span></div>`;
   const commonRows = (commons.length || posts.length) ? `<div class="costlist opt-totals">
       ${commons.map(c => extraRow(c, 'added to every option')).join('')}
@@ -453,7 +448,7 @@ function renderOptionsPreview(q){
 
   $id('pv_costs').innerHTML = '';
   $id('pv_words').textContent = '';
-  $id('pv_optwrap').innerHTML = blocks + commonRows + compare;
+  $id('pv_optwrap').innerHTML = commonRows + compare;
 }
 
 function renderTotalsBox(q){
