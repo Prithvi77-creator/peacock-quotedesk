@@ -4,6 +4,7 @@
 
 function fmtMoney(n, cur){
   if (isNaN(n)) return '—';
+  n = Math.round(n);   // whole units, deterministic — matches amountInWords (also rounds)
   return n.toLocaleString(cur === 'INR' ? 'en-IN' : 'en-US', { maximumFractionDigits: 0 });
 }
 
@@ -55,7 +56,7 @@ function amountInWords(total, cur){
    total = sub + gst + post */
 function sumAmounts(list){
   let s = 0;
-  (list || []).forEach(c => { s += parseFloat(c.amount) || 0; });
+  (list || []).forEach(c => { s += Math.max(0, parseFloat(c.amount) || 0); });   // negatives never reduce the total
   return s;
 }
 function computeTotals(costs, gstEnabled, gstRate, postCosts){
@@ -65,7 +66,7 @@ function computeTotals(costs, gstEnabled, gstRate, postCosts){
   return { sub, gst, post, total: sub + gst + post };
 }
 function computeOptionTotals(option, commonCosts, gstEnabled, gstRate, postCosts){
-  const sub = (parseFloat(option.price) || 0) + sumAmounts(commonCosts);
+  const sub = Math.max(0, parseFloat(option.price) || 0) + sumAmounts(commonCosts);
   const gst = gstEnabled ? sub * (parseFloat(gstRate) || 0) / 100 : 0;
   const post = sumAmounts(postCosts);
   return { sub, gst, post, total: sub + gst + post };

@@ -143,6 +143,8 @@ details.settings .inner{padding:2px 12px 12px;}
 .page{width:794px; height:1123px; background:#fff; box-shadow:0 6px 30px rgba(15,30,60,.16); position:relative; overflow:hidden; flex-shrink:0; font-family:'Poppins',sans-serif; color:var(--ink);}
 .overflow-flag{position:absolute; right:10px; top:10px; z-index:9; background:#fff4e3; color:#a3660a; border:1px solid #eedcb8; font-size:10.5px; font-weight:700; padding:4px 10px; border-radius:16px; display:none;}
 .page.overflowing .overflow-flag{display:block;}
+#pages.exporting .overflow-flag{display:none !important;}   /* never bake the editor warning into the PDF */
+.autofit{width:100%;}   /* shrink-to-fit wrapper (scaled by autofitPages when a page would overflow) */
 
 /* click-to-edit affordance (screen only) */
 [data-edit]{outline:none; border-radius:2px; transition:box-shadow .12s;}

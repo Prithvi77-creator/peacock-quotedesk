@@ -212,8 +212,11 @@ function geoMapSVG(legs, W, H){
   // half-spans (with a minimum) + modest padding, then expand the shorter axis
   // to match the frame's aspect so the map fills it with no wasted margin.
   const cLat = (minLat + maxLat) / 2, cLon = (minLon + maxLon) / 2;
-  let hLat = Math.max((maxLat - minLat) / 2, 1.75) * 1.35;
-  let hLon = Math.max((maxLon - minLon) / 2, 1.75) * 1.35;
+  // when the whole route collapses to one point (e.g. same From & To), zoom out
+  // to a regional view instead of a tight district-level crop
+  const minHalf = pts.length < 2 ? 3.4 : 1.75;
+  let hLat = Math.max((maxLat - minLat) / 2, minHalf) * 1.35;
+  let hLon = Math.max((maxLon - minLon) / 2, minHalf) * 1.35;
   const midLat = cLat, kx = Math.cos(midLat * Math.PI / 180);
   const frameAR = W / H;
   if ((hLon * kx) / hLat < frameAR) hLon = hLat * frameAR / kx;   // route too tall → widen

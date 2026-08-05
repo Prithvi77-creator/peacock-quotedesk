@@ -230,7 +230,7 @@ function renderFormCosts(){
   document.getElementById('costs').innerHTML = Q.costs.map((c, i) => `
   <div class="cost-row">
     <input value="${escHtml(c.label)}" placeholder="Description" oninput="Q.costs[${i}].label=this.value;upd()">
-    <input type="number" value="${c.amount === '' ? '' : c.amount}" placeholder="Amount" oninput="Q.costs[${i}].amount=this.value;upd()">
+    <input type="number" min="0" step="1" value="${c.amount === '' ? '' : c.amount}" placeholder="Amount" oninput="Q.costs[${i}].amount=this.value;upd()">
     <button class="del" onclick="delCost(${i})">✕</button>
   </div>`).join('');
 }
@@ -238,7 +238,7 @@ function renderFormPostCosts(){
   document.getElementById('postcosts').innerHTML = Q.postCosts.map((c, i) => `
   <div class="cost-row">
     <input value="${escHtml(c.label)}" placeholder="Description (GST-free)" oninput="Q.postCosts[${i}].label=this.value;upd()">
-    <input type="number" value="${c.amount === '' ? '' : c.amount}" placeholder="Amount" oninput="Q.postCosts[${i}].amount=this.value;upd()">
+    <input type="number" min="0" step="1" value="${c.amount === '' ? '' : c.amount}" placeholder="Amount" oninput="Q.postCosts[${i}].amount=this.value;upd()">
     <button class="del" onclick="delPostCost(${i})">✕</button>
   </div>`).join('');
 }
@@ -249,7 +249,7 @@ function renderFormOptions(){
     <div class="leg-head"><span>OPTION ${i + 1}</span><button class="del" onclick="delOption(${i})">✕ remove</button></div>
     <div class="grid2">
       <div class="field" style="margin:0"><label>Aircraft</label><input list="aclist" value="${escHtml(o.name)}" oninput="Q.options[${i}].name=this.value;upd()"></div>
-      <div class="field" style="margin:0"><label>Price (${Q.meta.currency})</label><input type="number" value="${o.price === '' ? '' : o.price}" oninput="Q.options[${i}].price=this.value;upd()"></div>
+      <div class="field" style="margin:0"><label>Price (${Q.meta.currency})</label><input type="number" min="0" step="1" value="${o.price === '' ? '' : o.price}" oninput="Q.options[${i}].price=this.value;upd()"></div>
     </div>
     <div class="grid2" style="margin-top:8px">
       <div class="field" style="margin:0"><label>Year of manufacture</label><input value="${escHtml(o.year)}" oninput="Q.options[${i}].year=this.value;upd()"></div>
@@ -571,6 +571,7 @@ async function downloadPDF(){
   const wrap = document.getElementById('pages');
   const savedTransform = wrap.style.transform, savedMargin = wrap.style.marginBottom;
   wrap.style.transform = 'none'; wrap.style.marginBottom = '0';
+  wrap.classList.add('exporting');   // hide the editor-only overflow warning from the PDF
   try {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
@@ -592,6 +593,7 @@ async function downloadPDF(){
     console.error(e);
     toast('PDF generation failed here — use your browser’s Print → Save as PDF instead.');
   }
+  wrap.classList.remove('exporting');
   wrap.style.transform = savedTransform; wrap.style.marginBottom = savedMargin;
   fitPreview();
   btn.disabled = false; btn.innerHTML = '&#11015;&nbsp; Download PDF';

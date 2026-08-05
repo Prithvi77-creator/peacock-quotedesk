@@ -217,7 +217,7 @@ let _reflowPending = false;
 function scheduleReflow(q){
   if (_reflowPending) return;
   _reflowPending = true;
-  const run = () => { _reflowPending = false; flowOptionPages(q); flagOverflows(); fitPreview(); };
+  const run = () => { _reflowPending = false; flowOptionPages(q); autofitPages(); flagOverflows(); fitPreview(); };
   if (document.visibilityState === 'hidden') setTimeout(run, 60);
   else requestAnimationFrame(() => requestAnimationFrame(run));
 }
@@ -225,6 +225,7 @@ function scheduleReflow(q){
 function reflowNow(q){
   _reflowPending = false;
   flowOptionPages(q);
+  autofitPages();
   flagOverflows();
   fitPreview();
 }
@@ -519,9 +520,27 @@ function flowOptionPages(q){
   });
 }
 
+/* Shrink an overflowing page's body just enough that everything fits (so the
+   Grand Total / long notes are never clipped). Only flags a warning if the
+   content is so large it can't fit even at the minimum scale. */
+const AUTOFIT_FLOOR = 0.6;
+function autofitPages(){
+  document.querySelectorAll('#pages .autofit').forEach(el => {
+    const page = el.closest('.page');
+    if (page && page.hidden) return;
+    el.style.transformOrigin = 'top center';
+    el.style.transform = 'none';                 // measure natural (unscaled) height
+    const parent = el.parentElement, cs = getComputedStyle(parent);
+    const avail = parent.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const natural = el.scrollHeight;
+    const s = (natural > avail && natural > 0) ? avail / natural : 1;
+    if (s < 1) el.style.transform = 'scale(' + Math.max(AUTOFIT_FLOOR, s) + ')';
+    if (page) page.classList.toggle('overflowing', s < AUTOFIT_FLOOR);   // warn only if truly too big
+  });
+}
 function flagOverflows(){
   document.querySelectorAll('#pages .page').forEach(p => {
-    if (p.hidden) return;
+    if (p.hidden || p.querySelector('.autofit')) return;   // autofit pages handled above
     const body = p.querySelector('.q-body, .t-body, .map-body, .opt-cont-body');
     const over = body && body.scrollHeight > body.clientHeight + 2;
     p.classList.toggle('overflowing', !!over);

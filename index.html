@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Peacock Jetlines — Charter Quotation System</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e2a52'/%3E%3Ctext x='16' y='23' font-family='Arial,sans-serif' font-size='21' font-weight='700' text-anchor='middle' fill='%23ee3a4e'%3EP%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=34">
+<link rel="stylesheet" href="css/styles.css?v=35">
 </head>
 <body>
 
@@ -134,7 +135,7 @@
       <h2>Aircraft options <span class="rule"></span></h2>
       <div id="options"></div>
       <button class="addbtn" onclick="addOption()">+ Add aircraft option</button>
-      <p class="hint">Each option shows its photos, key details and price. Cost lines below are common charges added to every option.</p>
+      <p class="hint">Each option gets its own aircraft page (photos, specs &amp; all-inclusive price); the costing page lists every option's total. Cost lines below are common charges added to every option.</p>
     </div>
 
     <h2>Flight details <span class="rule"></span></h2>
@@ -206,23 +207,25 @@
           <div class="redtick"></div>
         </div>
         <div class="q-body">
-          <div class="greet" id="pv_greet"></div>
-          <div id="pv_posbar_wrap" hidden>
-            <div class="secbar" style="margin:0 0 12px"><span class="sb-ic">&#43;</span><span class="sb-t" id="pv_posbar"></span></div>
+          <div class="autofit">
+            <div class="greet" id="pv_greet"></div>
+            <div id="pv_posbar_wrap" hidden>
+              <div class="secbar" style="margin:0 0 12px"><span class="sb-ic">&#43;</span><span class="sb-t" id="pv_posbar"></span></div>
+            </div>
+            <div class="meta-grid" id="pv_meta"></div>
+            <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_flights_title"></span></div>
+            <table class="flights">
+              <thead><tr>
+                <th id="pv_th_date"></th><th id="pv_th_from"></th><th id="pv_th_to"></th>
+                <th id="pv_th_etd"></th><th id="pv_th_time"></th><th id="pv_th_remarks"></th>
+              </tr></thead>
+              <tbody id="pv_legs"></tbody>
+            </table>
+            <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_cost_title"></span><span class="sb-tag" id="pv_curtag">INR</span></div>
+            <div class="costlist" id="pv_costs"></div>
+            <div id="pv_optwrap"></div>
+            <div class="inwords" id="pv_words"></div>
           </div>
-          <div class="meta-grid" id="pv_meta"></div>
-          <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_flights_title"></span></div>
-          <table class="flights">
-            <thead><tr>
-              <th id="pv_th_date"></th><th id="pv_th_from"></th><th id="pv_th_to"></th>
-              <th id="pv_th_etd"></th><th id="pv_th_time"></th><th id="pv_th_remarks"></th>
-            </tr></thead>
-            <tbody id="pv_legs"></tbody>
-          </table>
-          <div class="secbar"><span class="sb-ic">&#9992;</span><span class="sb-t" id="pv_cost_title"></span><span class="sb-tag" id="pv_curtag">INR</span></div>
-          <div class="costlist" id="pv_costs"></div>
-          <div id="pv_optwrap"></div>
-          <div class="inwords" id="pv_words"></div>
         </div>
         <div class="q-footer">
           <div class="pn-title" id="pv_notes_title"></div>
@@ -254,7 +257,7 @@
           <div class="t-title" id="pv_notes_page_title"></div>
         </div>
         <div class="t-body">
-          <div class="addl-notes" id="pv_addl_notes"></div>
+          <div class="addl-notes autofit" id="pv_addl_notes"></div>
         </div>
         <div class="t-footer"><div class="redrule"></div><div class="site js-site-echo"></div></div>
       </div>
@@ -315,16 +318,16 @@
 
 <!-- ?v=N cache-busts local assets: bump the number after editing any css/js
      so browsers (and the client) fetch the new file instead of a cached copy. -->
-<script src="js/assets.js?v=34"></script>
-<script src="js/templates.js?v=34"></script>
-<script src="js/fleet.js?v=34"></script>
-<script src="js/calc.js?v=34"></script>
-<script src="js/geo.js?v=34"></script>
-<script src="js/india-admin.js?v=34"></script>
-<script src="js/cities.js?v=34"></script>
-<script src="js/map.js?v=34"></script>
-<script src="js/store.js?v=34"></script>
-<script src="js/render.js?v=34"></script>
-<script src="js/app.js?v=34"></script>
+<script src="js/assets.js?v=35"></script>
+<script src="js/templates.js?v=35"></script>
+<script src="js/fleet.js?v=35"></script>
+<script src="js/calc.js?v=35"></script>
+<script src="js/geo.js?v=35"></script>
+<script src="js/india-admin.js?v=35"></script>
+<script src="js/cities.js?v=35"></script>
+<script src="js/map.js?v=35"></script>
+<script src="js/store.js?v=35"></script>
+<script src="js/render.js?v=35"></script>
+<script src="js/app.js?v=35"></script>
 </body>
 </html>
