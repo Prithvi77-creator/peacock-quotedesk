@@ -335,10 +335,14 @@ function galleryInnerHTML(name, photos, details, priceHtml){
   const descHtml = desc.length
     ? `<div class="ac-desc">${desc.map(escHtml).join('<br>')}</div>` : '';
 
-  // title pinned at top; optional price; photos + specs + description centred as one block
+  // title pinned at top; price (if any) sits to the RIGHT of the name; photos +
+  // specs + description centred as one block below
+  const nameEl = `<div class="ac-name">${escHtml(name) || 'Aircraft'}</div>`;
+  const head = priceHtml
+    ? `<div class="ac-namerow">${nameEl}${priceHtml}</div>`
+    : nameEl;
   return `<div class="ac-eyebrow">Charter Aircraft</div>`
-    + `<div class="ac-name">${escHtml(name) || 'Aircraft'}</div>`
-    + (priceHtml || '')
+    + head
     + `<div class="ac-media">${photosHtml + specsHtml + descHtml}</div>`;
 }
 

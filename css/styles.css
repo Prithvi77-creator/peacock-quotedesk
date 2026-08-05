@@ -205,11 +205,14 @@ details.settings .inner{padding:2px 12px 12px;}
    as a gap between photos and specs or at the foot of the page. */
 .ac-tbody{display:flex; flex-direction:column;}
 .ac-pv{display:flex; flex-direction:column; flex:1; min-height:0;}
-.ac-eyebrow, .ac-name{flex-shrink:0;}
-.ac-price{flex-shrink:0; margin-top:14px; display:flex; flex-direction:column; gap:2px;}
+.ac-eyebrow, .ac-name, .ac-namerow{flex-shrink:0;}
+/* name on the left, price on the right */
+.ac-namerow{display:flex; align-items:flex-end; justify-content:space-between; gap:22px;}
+.ac-namerow .ac-name{min-width:0;}
+.ac-price{display:flex; flex-direction:column; align-items:flex-end; gap:2px; text-align:right; padding-bottom:2px; white-space:nowrap;}
 .ac-price-lbl{font-size:9.5px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted);}
-.ac-price-v{font-size:27px; font-weight:700; color:var(--red-dark); letter-spacing:.3px; font-variant-numeric:tabular-nums;}
-.ac-media{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center;}
+.ac-price-v{font-size:26px; font-weight:700; color:var(--red-dark); letter-spacing:.3px; font-variant-numeric:tabular-nums;}
+.ac-media{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; overflow:hidden;}
 /* airy spec grid — balanced columns, hairline rules, per-row dividers */
 .ac-specband{display:grid; row-gap:15px; margin:22px 0 0; padding:16px 0; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; flex-shrink:0;}
 .ac-si{padding:2px 0 2px 26px; border-left:1px solid #eaeef4;}
