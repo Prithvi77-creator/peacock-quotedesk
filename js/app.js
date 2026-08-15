@@ -611,7 +611,7 @@ function toast(msg, ms){
 /* ================= password gate ================= */
 /* Client-side deterrent only — NOT real security (the value lives in the page).
    Real access control comes with the PHP/server phase. */
-const APP_PASSWORD = '5001';
+const APP_PASSWORD = '5001'; 
 function submitGate(e){
   if (e) e.preventDefault();
   const inp = document.getElementById('gate_pw');
